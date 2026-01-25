@@ -90,29 +90,36 @@ function App() {
 
   const parsedNoteResults = searchResults?.parsedNotes ?? NO_RESULTS
 
-  const [listData, results, sortedResults] = useMemo(() => {
-    let sortedResults = parsedNoteResults
-    const direction = sortDirection === SortDirection.Ascending ? 'asc' : 'desc'
-    const sortFields: Record<SortType, keyof NoteItemData> = {
-      [SortType.FolderName]: 'folderTitle',
-      [SortType.NoteName]: 'title',
-      [SortType.Matches]: 'matchCount',
-      [SortType.Updated]: 'updated_time',
-      // ignored
-      [SortType.Relevance]: 'id',
-    }
+const [listData, results, sortedResults] = useMemo(() => {
+  let sortedResults = parsedNoteResults
+  const direction = sortDirection === SortDirection.Ascending ? 'asc' : 'desc'
+  const sortFields: Record<SortType, keyof NoteItemData> = {
+    [SortType.FolderName]: 'folderTitle',
+    [SortType.NoteName]: 'title',
+    [SortType.Matches]: 'matchCount',
+    [SortType.Updated]: 'updated_time',
+    // ignored
+    [SortType.Relevance]: 'id',
+  }
 
-    if (sortType !== SortType.Relevance) {
-      const sortField = sortFields[sortType]
-      sortedResults = orderBy(parsedNoteResults, (r) => r.noteItem[sortField], [direction])
-    }
+  if (sortType !== SortType.Relevance) {
+    const sortField = sortFields[sortType]
+    sortedResults = orderBy(parsedNoteResults, (r) => r.noteItem[sortField], [direction])
+  }
 
-    const finalSortedResults = sortedResults.map((parsedNote) => [parsedNote.noteItem, ...parsedNote.fragmentItems])
-    const flattenedResults: NoteSearchItemData[] = finalSortedResults.flat()
+  const finalSortedResults = sortedResults.map((parsedNote) => [parsedNote.noteItem, ...parsedNote.fragmentItems])
 
-    const noteListData = new NoteSearchListData(flattenedResults)
-    return [noteListData, flattenedResults, sortedResults] as const
-  }, [parsedNoteResults, sortType, sortDirection])
+  const flattenedResults: NoteSearchItemData[] = finalSortedResults.flat()
+
+  const noteListData = new NoteSearchListData(flattenedResults)
+  
+  // NEU: Initial alle Notizen als collapsed setzen, wenn NICHT nur Titel gesucht wird
+  if (!titlesOnly) {
+    noteListData.initializeAllCollapsed()
+  }
+  
+  return [noteListData, flattenedResults, sortedResults] as const
+}, [parsedNoteResults, sortType, sortDirection, titlesOnly])  // WICHTIG: titlesOnly als Dependency hinzufügen!
 
   useEffect(() => {
     listData.resultsUpdated()
