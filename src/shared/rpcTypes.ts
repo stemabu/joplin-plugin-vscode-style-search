@@ -7,6 +7,6 @@ export interface RpcMethods {
   getTitleBeforeBracket(): Promise<string | null>
   getTitleInBrackets(): Promise<string | null>
   getSelectedText(): Promise<string | null>
-  ensureMoveFoldersExist(): Promise<{ aussortiert: string; museum: string }>
-  moveNotes(moves: { noteId: string; target: 'aussortiert' | 'museum' }[]): Promise<void>
+  getAllFolders(): Promise<any[]>  // GEÄNDERT
+  moveNotes(moves: { noteId: string; folderId: string }[]): Promise<void>  // GEÄNDERT
 }
