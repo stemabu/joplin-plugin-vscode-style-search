@@ -9,32 +9,71 @@ export interface SearchQueryOptions {
   titlesOnly?: boolean
 }
 
+// NEU: Hilfsfunktion zum Extrahieren von Text aus Titel
+function extractFromTitle(title: string, startDelim: string, endDelim: string): string | null {
+  const startIndex = title.indexOf(startDelim)
+  if (startIndex === -1) return null
+  
+  const searchStart = startIndex + startDelim.length
+  const endIndex = endDelim ? title.indexOf(endDelim, searchStart) : title.length
+  
+  if (endIndex === -1) return null
+  
+  const extracted = title.substring(searchStart, endIndex).trim()
+  return extracted || null
+}
+
 const handler = {
   search: searchNotes,
   openNote: async (noteId: string, line?: number) => {
     await joplin.commands.execute('openNote', noteId)
-
-    // TODO Figure out how to scroll to a specific line
-    // const delay_scroll = 1
-
-    // if (line > 0) {
-    //   await new Promise((res) => setTimeout(res, delay_scroll * 1000))
-    //   await joplin.commands.execute('editor.execCommand', {
-    //     name: 'sidebar_cm_scrollToLine',
-    //     args: [line - 1],
-    //   })
-    // }
+  },
+  
+  // NEU: Holt Text zwischen "– " und "[" aus dem Titel
+  getTitleBeforeBracket: async (): Promise<string | null> => {
+    try {
+      const note = await joplin.workspace.selectedNote()
+      if (!note || !note.title) return null
+      
+      return extractFromTitle(note.title, '– ', '[')
+    } catch (error) {
+      console.error('Error getting title before bracket:', error)
+      return null
+    }
+  },
+  
+  // NEU: Holt Text zwischen "[" und "]" aus dem Titel
+  getTitleInBrackets: async (): Promise<string | null> => {
+    try {
+      const note = await joplin.workspace.selectedNote()
+      if (!note || !note.title) return null
+      
+      return extractFromTitle(note.title, '[', ']')
+    } catch (error) {
+      console.error('Error getting title in brackets:', error)
+      return null
+    }
+  },
+  
+  // NEU: Holt den aktuell markierten Text
+  getSelectedText: async (): Promise<string | null> => {
+    try {
+      const selectedText = await joplin.commands.execute('selectedText')
+      return selectedText && selectedText.trim() ? selectedText.trim() : null
+    } catch (error) {
+      console.error('Error getting selected text:', error)
+      return null
+    }
   },
 }
 
 export type HandlerType = typeof handler
 
 export const createRpcServer = (target: PostMessageTarget) => {
-  // Create a ChannelServer instance
   const server = new ChannelServer({
     target,
-    channelId: 'channel-1', // Must match the channelId in the child window
-    handler: handler, // Your message handler,
+    channelId: 'channel-1',
+    handler: handler,
   })
 
   return server
@@ -129,13 +168,13 @@ async function setUpSearchPanel(panel: string) {
 
 joplin.plugins.register({
   onStart: async function () {
-    // Create the panel object
     const panel = await joplin.views.panels.create('panel_1')
 
     await joplin.views.panels.hide(panel)
 
     setUpSearchPanel(panel)
 
+    // Haupt-Toggle-Command
     joplin.commands.register({
       name: 'isquaredsoftware.vscode-search.toggle_panel',
       label: 'Toggle VS Code-style search panel',
@@ -148,11 +187,76 @@ joplin.plugins.register({
       },
     })
 
+    // NEU: F4 - Text zwischen "– " und "[" suchen
+    joplin.commands.register({
+      name: 'isquaredsoftware.vscode-search.search_title_before_bracket',
+      label: 'Search: Title text before bracket',
+      execute: async () => {
+        await joplin.views.panels.postMessage(panel, {
+          type: 'SEARCH_TITLE_BEFORE_BRACKET',
+        })
+        if (!(await joplin.views.panels.visible(panel))) {
+          await joplin.views.panels.show(panel)
+        }
+      },
+    })
+
+    // NEU: F5 - Text zwischen "[" und "]" suchen
+    joplin.commands.register({
+      name: 'isquaredsoftware.vscode-search.search_title_in_brackets',
+      label: 'Search: Title text in brackets',
+      execute: async () => {
+        await joplin.views.panels.postMessage(panel, {
+          type: 'SEARCH_TITLE_IN_BRACKETS',
+        })
+        if (!(await joplin.views.panels.visible(panel))) {
+          await joplin.views.panels.show(panel)
+        }
+      },
+    })
+
+    // NEU: F7 - Markierten Text suchen
+    joplin.commands.register({
+      name: 'isquaredsoftware.vscode-search.search_selected_text',
+      label: 'Search: Selected text',
+      execute: async () => {
+        await joplin.views.panels.postMessage(panel, {
+          type: 'SEARCH_SELECTED_TEXT',
+        })
+        if (!(await joplin.views.panels.visible(panel))) {
+          await joplin.views.panels.show(panel)
+        }
+      },
+    })
+
+    // Menu-Item für Hauptfunktion
     joplin.views.menuItems.create(
       'isquaredsoftware.vscode-search.toggle_panel.menuitem',
       'isquaredsoftware.vscode-search.toggle_panel',
       MenuItemLocation.View,
       { accelerator: 'CmdOrCtrl+Shift+F' },
+    )
+
+    // NEU: Menu-Items für neue Commands mit Tastenkürzeln
+    joplin.views.menuItems.create(
+      'isquaredsoftware.vscode-search.search_title_before_bracket.menuitem',
+      'isquaredsoftware.vscode-search.search_title_before_bracket',
+      MenuItemLocation.View,
+      { accelerator: 'F4' },
+    )
+
+    joplin.views.menuItems.create(
+      'isquaredsoftware.vscode-search.search_title_in_brackets.menuitem',
+      'isquaredsoftware.vscode-search.search_title_in_brackets',
+      MenuItemLocation.View,
+      { accelerator: 'F5' },
+    )
+
+    joplin.views.menuItems.create(
+      'isquaredsoftware.vscode-search.search_selected_text.menuitem',
+      'isquaredsoftware.vscode-search.search_selected_text',
+      MenuItemLocation.View,
+      { accelerator: 'F7' },
     )
 
     const target: PostMessageTarget = {
