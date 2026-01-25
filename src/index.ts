@@ -9,13 +9,11 @@ export interface SearchQueryOptions {
   titlesOnly?: boolean
 }
 
-// GEÄNDERT: Neue Funktion für Extraktion von rechts
+// Funktion für Extraktion von rechts
 function extractFromTitleRight(title: string, startDelim: string, endDelim: string): string | null {
-  // Von rechts nach links suchen
   const endIndex = title.lastIndexOf(endDelim)
   if (endIndex === -1) return null
   
-  // Jetzt von diesem Punkt rückwärts nach startDelim suchen
   const searchEnd = endIndex
   const startIndex = title.lastIndexOf(startDelim, searchEnd)
   
@@ -26,7 +24,7 @@ function extractFromTitleRight(title: string, startDelim: string, endDelim: stri
   return extracted || null
 }
 
-// Original-Funktion für Extraktion von links (für F4)
+// Original-Funktion für Extraktion von links
 function extractFromTitle(title: string, startDelim: string, endDelim: string): string | null {
   const startIndex = title.indexOf(startDelim)
   if (startIndex === -1) return null
@@ -46,7 +44,6 @@ const handler = {
     await joplin.commands.execute('openNote', noteId)
   },
   
-  // F4: Text zwischen "– " und "[" aus dem Titel
   getTitleBeforeBracket: async (): Promise<string | null> => {
     try {
       const note = await joplin.workspace.selectedNote()
@@ -59,13 +56,11 @@ const handler = {
     }
   },
   
-  // F5: Text zwischen "[" und "]" - JETZT VON RECHTS!
   getTitleInBrackets: async (): Promise<string | null> => {
     try {
       const note = await joplin.workspace.selectedNote()
       if (!note || !note.title) return null
       
-      // GEÄNDERT: Von rechts nach links suchen
       return extractFromTitleRight(note.title, '[', ']')
     } catch (error) {
       console.error('Error getting title in brackets:', error)
@@ -73,7 +68,6 @@ const handler = {
     }
   },
   
-  // F7: Markierten Text
   getSelectedText: async (): Promise<string | null> => {
     try {
       const selectedText = await joplin.commands.execute('selectedText')
@@ -81,6 +75,56 @@ const handler = {
     } catch (error) {
       console.error('Error getting selected text:', error)
       return null
+    }
+  },
+
+  // NEU: Prüft und erstellt die Notizbücher "Aussortiert" und "Museum"
+  ensureMoveFoldersExist: async (): Promise<{ aussortiert: string; museum: string }> => {
+    try {
+      const folders = await joplin.data.get(['folders'])
+      
+      let aussortiert = folders.items.find((f: any) => f.title === 'Aussortiert')
+      let museum = folders.items.find((f: any) => f.title === 'Museum')
+      
+      if (!aussortiert) {
+        console.log('Creating folder "Aussortiert"')
+        aussortiert = await joplin.data.post(['folders'], null, { title: 'Aussortiert' })
+      }
+      
+      if (!museum) {
+        console.log('Creating folder "Museum"')
+        museum = await joplin.data.post(['folders'], null, { title: 'Museum' })
+      }
+      
+      return {
+        aussortiert: aussortiert.id,
+        museum: museum.id,
+      }
+    } catch (error) {
+      console.error('Error ensuring folders exist:', error)
+      throw error
+    }
+  },
+
+  // NEU: Verschiebt Notizen basierend auf der Auswahl
+  moveNotes: async (moves: { noteId: string; target: 'aussortiert' | 'museum' }[]): Promise<void> => {
+    try {
+      const folderIds = await handler.ensureMoveFoldersExist()
+      
+      for (const move of moves) {
+        const targetFolderId = move.target === 'aussortiert' ? folderIds.aussortiert : folderIds.museum
+        
+        console.log(`Moving note ${move.noteId} to ${move.target} (${targetFolderId})`)
+        
+        await joplin.data.put(['notes', move.noteId], null, {
+          parent_id: targetFolderId,
+        })
+      }
+      
+      console.log(`Successfully moved ${moves.length} note(s)`)
+    } catch (error) {
+      console.error('Error moving notes:', error)
+      throw error
     }
   },
 }
