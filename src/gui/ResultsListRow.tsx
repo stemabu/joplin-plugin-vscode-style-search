@@ -23,6 +23,9 @@ export type ItemData = {
   folders: Folder[]
   query: string
   titlesOnly: boolean
+  moveMode: boolean  // NEU
+  noteMovements: Map<string, 'none' | 'aussortiert' | 'museum'>  // NEU
+  onNoteMovementChange: (noteId: string, target: 'none' | 'aussortiert' | 'museum') => void  // NEU
   openNote: (noteId: string, line?: number) => void
 }
 
@@ -38,7 +41,7 @@ export default function ResultsListItem({
   const { itemData, listData: genericListData } = data
 
   const listData = genericListData as NoteSearchListData
-  const { openNote, titlesOnly, folders } = itemData
+  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange } = itemData
   const { isCollapsed, result } = listData.getItemAtIndex(index)
 
   if (isNoteItem(result)) {
@@ -50,6 +53,9 @@ export default function ResultsListItem({
         titlesOnly={titlesOnly}
         result={result}
         folders={folders}
+        moveMode={moveMode}  // NEU
+        noteMovements={noteMovements}  // NEU
+        onNoteMovementChange={onNoteMovementChange}  // NEU
         style={style}
         openNote={openNote}
       />
@@ -68,6 +74,9 @@ function LocationRow({
   titlesOnly,
   result,
   folders,
+  moveMode,  // NEU
+  noteMovements,  // NEU
+  onNoteMovementChange,  // NEU
   style,
   openNote,
 }: {
@@ -77,6 +86,9 @@ function LocationRow({
   titlesOnly: boolean
   result: NoteItemData
   folders: Folder[]
+  moveMode: boolean  // NEU
+  noteMovements: Map<string, 'none' | 'aussortiert' | 'museum'>  // NEU
+  onNoteMovementChange: (noteId: string, target: 'none' | 'aussortiert' | 'museum') => void  // NEU
   style: CSSProperties
   openNote: (noteId: string, line?: number) => void
 }) {
@@ -91,8 +103,44 @@ function LocationRow({
   const parentFolder = folders.find((folder) => folder.id === note.parent_id)
   const parentFolderTitle = parentFolder?.title ?? ''
 
+  // NEU: Aktueller Move-Status
+  const currentMovement = noteMovements.get(id) || 'none'
+
   const noteHeaderContent = (
     <>
+      {/* NEU: Radio Buttons für Move Mode */}
+      {moveMode && (
+        <div className="flex gap-1 mr-2" onClick={(e) => e.stopPropagation()}>
+          <label title="Keep in current folder" className="cursor-pointer">
+            <input
+              type="radio"
+              name={`move-${id}`}
+              checked={currentMovement === 'none'}
+              onChange={() => onNoteMovementChange(id, 'none')}
+              className="cursor-pointer"
+            />
+          </label>
+          <label title="Move to Aussortiert" className="cursor-pointer">
+            <input
+              type="radio"
+              name={`move-${id}`}
+              checked={currentMovement === 'aussortiert'}
+              onChange={() => onNoteMovementChange(id, 'aussortiert')}
+              className="cursor-pointer"
+            />
+          </label>
+          <label title="Move to Museum" className="cursor-pointer">
+            <input
+              type="radio"
+              name={`move-${id}`}
+              checked={currentMovement === 'museum'}
+              onChange={() => onNoteMovementChange(id, 'museum')}
+              className="cursor-pointer"
+            />
+          </label>
+        </div>
+      )}
+      
       <Icon className={styles.LocationIcon} type="file" />
       <div className={styles.Location} title={title}>
         {parentFolderTitle ? `${parentFolderTitle} > ` : null}
@@ -118,10 +166,10 @@ function LocationRow({
     rowContent = (
       <Expandable
         children={null}
-        defaultOpen={false}  // Geändert: Suchergebnis immer eingeklappt anzeigen
+        defaultOpen={false}
         header={noteHeaderContent}
         headerClassName={styles.LocationRow}
-        key={id + isCollapsed.toString() /* Re-apply defaultCollapsed if row content changes */}
+        key={id + isCollapsed.toString()}
         onChange={(collapsed) => listData.setCollapsed(index, !collapsed)}
       />
     )
