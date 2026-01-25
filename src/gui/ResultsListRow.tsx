@@ -26,8 +26,8 @@ export type ItemData = {
   moveMode: boolean
   noteMovements: Map<string, 'none' | 'folder1' | 'folder2'>
   onNoteMovementChange: (noteId: string, target: 'none' | 'folder1' | 'folder2') => void
-  folder1Name: string  // NEU
-  folder2Name: string  // NEU
+  folder1Name: string
+  folder2Name: string
   openNote: (noteId: string, line?: number) => void
 }
 
@@ -58,8 +58,8 @@ export default function ResultsListItem({
         moveMode={moveMode}
         noteMovements={noteMovements}
         onNoteMovementChange={onNoteMovementChange}
-        folder1Name={folder1Name}  // NEU
-        folder2Name={folder2Name}  // NEU
+        folder1Name={folder1Name}
+        folder2Name={folder2Name}
         style={style}
         openNote={openNote}
       />
@@ -81,8 +81,8 @@ function LocationRow({
   moveMode,
   noteMovements,
   onNoteMovementChange,
-  folder1Name,  // NEU
-  folder2Name,  // NEU
+  folder1Name,
+  folder2Name,
   style,
   openNote,
 }: {
@@ -95,8 +95,8 @@ function LocationRow({
   moveMode: boolean
   noteMovements: Map<string, 'none' | 'folder1' | 'folder2'>
   onNoteMovementChange: (noteId: string, target: 'none' | 'folder1' | 'folder2') => void
-  folder1Name: string  // NEU
-  folder2Name: string  // NEU
+  folder1Name: string
+  folder2Name: string
   style: CSSProperties
   openNote: (noteId: string, line?: number) => void
 }) {
@@ -113,38 +113,36 @@ function LocationRow({
 
   const currentMovement = noteMovements.get(id) || 'none'
 
+  // NEU: Custom styled radio buttons mit Farben
+  const radioButtonStyle = (isSelected: boolean, color: 'gray' | 'red' | 'blue') => {
+    const colors = {
+      gray: isSelected ? 'bg-gray-500' : 'bg-gray-300',
+      red: isSelected ? 'bg-red-600' : 'bg-red-300',
+      blue: isSelected ? 'bg-blue-600' : 'bg-blue-300',
+    }
+    
+    return `w-4 h-4 rounded-full border-2 ${isSelected ? 'border-gray-700' : 'border-gray-400'} ${colors[color]} cursor-pointer hover:opacity-80 transition-opacity`
+  }
+
   const noteHeaderContent = (
     <>
-      {/* Radio Buttons für Move Mode mit Tooltips */}
       {moveMode && (
         <div className="flex gap-1 mr-2" onClick={(e) => e.stopPropagation()}>
-          <label title="Keep in current folder" className="cursor-pointer">
-            <input
-              type="radio"
-              name={`move-${id}`}
-              checked={currentMovement === 'none'}
-              onChange={() => onNoteMovementChange(id, 'none')}
-              className="cursor-pointer"
-            />
-          </label>
-          <label title={`Move to: ${folder1Name}`} className="cursor-pointer">
-            <input
-              type="radio"
-              name={`move-${id}`}
-              checked={currentMovement === 'folder1'}
-              onChange={() => onNoteMovementChange(id, 'folder1')}
-              className="cursor-pointer"
-            />
-          </label>
-          <label title={`Move to: ${folder2Name}`} className="cursor-pointer">
-            <input
-              type="radio"
-              name={`move-${id}`}
-              checked={currentMovement === 'folder2'}
-              onChange={() => onNoteMovementChange(id, 'folder2')}
-              className="cursor-pointer"
-            />
-          </label>
+          <div
+            className={radioButtonStyle(currentMovement === 'none', 'gray')}
+            onClick={() => onNoteMovementChange(id, 'none')}
+            title="Keep in current folder"
+          />
+          <div
+            className={radioButtonStyle(currentMovement === 'folder1', 'red')}
+            onClick={() => onNoteMovementChange(id, 'folder1')}
+            title={`Move to: ${folder1Name}`}
+          />
+          <div
+            className={radioButtonStyle(currentMovement === 'folder2', 'blue')}
+            onClick={() => onNoteMovementChange(id, 'folder2')}
+            title={`Move to: ${folder2Name}`}
+          />
         </div>
       )}
       
