@@ -67,6 +67,41 @@ function App() {
   const [sortType, setSortType] = useState(SortType.Relevance)
   const [sortDirection, setSortDirection] = useState(SortDirection.Descending)
 
+  // NEU: Handler für Nachrichten vom Backend
+  useEffect(() => {
+    const handleMessage = async (msg: any) => {
+      if (!msg || !msg.type) return
+
+      switch (msg.type) {
+        case 'SEARCH_TITLE_BEFORE_BRACKET': {
+          const text = await client.stub.getTitleBeforeBracket()
+          if (text) {
+            setSearchText(text)
+          }
+          break
+        }
+        case 'SEARCH_TITLE_IN_BRACKETS': {
+          const text = await client.stub.getTitleInBrackets()
+          if (text) {
+            setSearchText(text)
+          }
+          break
+        }
+        case 'SEARCH_SELECTED_TEXT': {
+          const text = await client.stub.getSelectedText()
+          if (text) {
+            setSearchText(text)
+          }
+          break
+        }
+      }
+    }
+
+    target.onMessage((ev) => {
+      handleMessage(ev.data)
+    })
+  }, [])  
+  
   const {
     value: searchResults,
     loading,
