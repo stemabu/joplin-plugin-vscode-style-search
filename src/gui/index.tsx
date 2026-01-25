@@ -74,23 +74,22 @@ function App() {
   const [sortType, setSortType] = useState(SortType.Relevance)
   const [sortDirection, setSortDirection] = useState(SortDirection.Descending)
   
-  // Move Mode States
   const [moveMode, setMoveMode] = useState(false)
   const [noteMovements, setNoteMovements] = useState<Map<string, 'none' | 'folder1' | 'folder2'>>(new Map())
   const [isMoving, setIsMoving] = useState(false)
   
-  // NEU: Konfigurations-States
   const [showConfig, setShowConfig] = useState(false)
   const [allFolders, setAllFolders] = useState<Folder[]>([])
   const [targetFolder1, setTargetFolder1] = useState<string>('')
   const [targetFolder2, setTargetFolder2] = useState<string>('')
 
-  // NEU: Lade alle Notizbücher beim ersten Öffnen des Config-Panels
+  // NEU: Success Message State
+  const [successMessage, setSuccessMessage] = useState<string>('')
+
   useEffect(() => {
     if (showConfig && allFolders.length === 0) {
       client.stub.getAllFolders().then(folders => {
         setAllFolders(folders)
-        // Setze Defaults falls noch nicht gesetzt
         if (!targetFolder1 && folders.length > 0) setTargetFolder1(folders[0].id)
         if (!targetFolder2 && folders.length > 1) setTargetFolder2(folders[1].id)
       }).catch(err => {
@@ -159,11 +158,11 @@ function App() {
     })
   }
 
-  // GEÄNDERT: Nutzt jetzt die konfigurierten Folder
   const handleExecuteMoves = async () => {
     try {
       if (!targetFolder1 || !targetFolder2) {
-        alert('Please configure target folders first')
+        setSuccessMessage('Please configure target folders first')
+        setTimeout(() => setSuccessMessage(''), 3000)
         setShowConfig(true)
         return
       }
@@ -181,13 +180,16 @@ function App() {
       })
       
       if (movesToExecute.length === 0) {
-        alert('No notes selected for moving')
+        setSuccessMessage('No notes selected for moving')
+        setTimeout(() => setSuccessMessage(''), 3000)
         return
       }
       
       await client.stub.moveNotes(movesToExecute)
       
-      alert(`Successfully moved ${movesToExecute.length} note(s)`)
+      // NEU: Success-Message statt Alert
+      setSuccessMessage(`✓ Successfully moved ${movesToExecute.length} note(s)`)
+      setTimeout(() => setSuccessMessage(''), 3000)
       
       setNoteMovements(new Map())
       setMoveMode(false)
@@ -199,7 +201,8 @@ function App() {
       
     } catch (error) {
       console.error('Error executing moves:', error)
-      alert('Error moving notes: ' + error)
+      setSuccessMessage('Error moving notes: ' + error)
+      setTimeout(() => setSuccessMessage(''), 3000)
     } finally {
       setIsMoving(false)
     }
@@ -292,7 +295,6 @@ function App() {
     inputRef.current?.focus()
   }, [])
 
-  // NEU: Hole die Namen der konfigurierten Folder
   const folder1Name = allFolders.find(f => f.id === targetFolder1)?.title || 'Folder 1'
   const folder2Name = allFolders.find(f => f.id === targetFolder2)?.title || 'Folder 2'
 
@@ -418,13 +420,32 @@ function App() {
           )}
         </div>
 
-        {/* NEU: Konfigurations-Panel */}
+        {/* NEU: Ziel-Notizbücher oder Success Message anzeigen */}
+        {moveMode && !showConfig && (
+          <div className="mb-1 p-2 text-sm">
+            {successMessage ? (
+              <div className="text-green-600 dark:text-green-400 font-semibold">
+                {successMessage}
+              </div>
+            ) : (
+              <div className="flex gap-4">
+                <span className="text-red-600 dark:text-red-400">
+                  ● {folder1Name}
+                </span>
+                <span className="text-blue-600 dark:text-blue-400">
+                  ● {folder2Name}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {showConfig && (
           <div className="mb-2 p-3 border border-blue-300 rounded bg-blue-50 dark:bg-gray-800 dark:border-blue-700">
             <h4 className="font-bold mb-2">Configure Target Folders</h4>
             <div className="space-y-2">
               <div>
-                <label className="block text-sm mb-1">Middle Radio Button → Move to:</label>
+                <label className="block text-sm mb-1">Middle Radio Button (Red) → Move to:</label>
                 <select
                   value={targetFolder1}
                   onChange={(e) => setTargetFolder1(e.target.value)}
@@ -436,7 +457,7 @@ function App() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm mb-1">Right Radio Button → Move to:</label>
+                <label className="block text-sm mb-1">Right Radio Button (Blue) → Move to:</label>
                 <select
                   value={targetFolder2}
                   onChange={(e) => setTargetFolder2(e.target.value)}
