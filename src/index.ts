@@ -252,47 +252,18 @@ joplin.plugins.register({
     await joplin.views.panels.hide(panel)
     setUpSearchPanel(panel)
 
-    // NEU: Selection Counter Panel erstellen
+    // Selection Counter Panel erstellen und PERMANENT anzeigen
     const selectionCounterPanel = await joplin.views.panels.create('selection_counter_panel')
     await joplin.views.panels.addScript(selectionCounterPanel, './selectionCounter.css')
-    await joplin.views.panels.setHtml(selectionCounterPanel, '')
-    
-    // NEU: Toolbar-Button für Selection Counter
-    await joplin.views.toolbarButtons.create(
-      'selection_counter_button',
-      'toggle_selection_counter',
-      ToolbarButtonLocation.NoteToolbar
-    )
+    await updateSelectionCounter(selectionCounterPanel)
+    await joplin.views.panels.show(selectionCounterPanel)
 
-    // NEU: Command für Selection Counter (macht nichts, nur für Button nötig)
-    await joplin.commands.register({
-      name: 'toggle_selection_counter',
-      label: 'Show Selection Count',
-      execute: async () => {
-        const visible = await joplin.views.panels.visible(selectionCounterPanel)
-        if (visible) {
-          await joplin.views.panels.hide(selectionCounterPanel)
-        } else {
-          await joplin.views.panels.show(selectionCounterPanel)
-          await updateSelectionCounter(selectionCounterPanel)
-        }
-      },
-    })
-
-    // NEU: Bei Änderung der Notiz-Auswahl Counter aktualisieren
+    // Bei Änderung der Notiz-Auswahl Counter aktualisieren
     await joplin.workspace.onNoteSelectionChange(async () => {
       await updateSelectionCounter(selectionCounterPanel)
-      
-      // Panel automatisch zeigen wenn mehrere Notizen ausgewählt
-      const selectedNoteIds = await joplin.workspace.selectedNoteIds()
-      if (selectedNoteIds.length > 1) {
-        await joplin.views.panels.show(selectionCounterPanel)
-      } else {
-        await joplin.views.panels.hide(selectionCounterPanel)
-      }
     })
 
-    // Bestehende Commands...
+    // Search Panel Commands
     joplin.commands.register({
       name: 'isquaredsoftware.vscode-search.toggle_panel',
       label: 'Toggle VS Code-style search panel',
