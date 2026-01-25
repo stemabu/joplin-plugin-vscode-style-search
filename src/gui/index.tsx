@@ -31,9 +31,6 @@ const target: PostMessageTarget = {
 }
 
 function parseColor(input: string) {
-  // const div = document.createElement('div')
-  // div.style.color = input
-  // const actualColor = getComputedStyle(div).color=
   const m = input.match(/^rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+),?\s*(\d+)?\)$/i)
   if (m) return [m[1], m[2], m[3]]
   else throw new Error('Colour ' + input + ' could not be parsed.')
@@ -67,41 +64,53 @@ function App() {
   const [sortType, setSortType] = useState(SortType.Relevance)
   const [sortDirection, setSortDirection] = useState(SortDirection.Descending)
 
-  // NEU: Handler für Nachrichten vom Backend
+  // NEU: Handler für Keyboard-Shortcuts
   useEffect(() => {
-    const handleMessage = async (msg: any) => {
+    const messageHandler = async (originalMessage: any) => {
+      const msg = originalMessage.message
+      
+      console.log('Received message in frontend:', msg)
+      
       if (!msg || !msg.type) return
 
-      switch (msg.type) {
-        case 'SEARCH_TITLE_BEFORE_BRACKET': {
-          const text = await client.stub.getTitleBeforeBracket()
-          if (text) {
-            setSearchText(text)
+      try {
+        switch (msg.type) {
+          case 'SEARCH_TITLE_BEFORE_BRACKET': {
+            console.log('Handling SEARCH_TITLE_BEFORE_BRACKET')
+            const text = await client.stub.getTitleBeforeBracket()
+            console.log('Got text before bracket:', text)
+            if (text) {
+              setSearchText(text)
+            }
+            break
           }
-          break
-        }
-        case 'SEARCH_TITLE_IN_BRACKETS': {
-          const text = await client.stub.getTitleInBrackets()
-          if (text) {
-            setSearchText(text)
+          case 'SEARCH_TITLE_IN_BRACKETS': {
+            console.log('Handling SEARCH_TITLE_IN_BRACKETS')
+            const text = await client.stub.getTitleInBrackets()
+            console.log('Got text in brackets:', text)
+            if (text) {
+              setSearchText(text)
+            }
+            break
           }
-          break
-        }
-        case 'SEARCH_SELECTED_TEXT': {
-          const text = await client.stub.getSelectedText()
-          if (text) {
-            setSearchText(text)
+          case 'SEARCH_SELECTED_TEXT': {
+            console.log('Handling SEARCH_SELECTED_TEXT')
+            const text = await client.stub.getSelectedText()
+            console.log('Got selected text:', text)
+            if (text) {
+              setSearchText(text)
+            }
+            break
           }
-          break
         }
+      } catch (error) {
+        console.error('Error handling message:', error)
       }
     }
 
-    target.onMessage((ev) => {
-      handleMessage(ev.data)
-    })
-  }, [])  
-  
+    webviewApi.onMessage(messageHandler)
+  }, [])
+
   const {
     value: searchResults,
     loading,
@@ -125,40 +134,34 @@ function App() {
 
   const parsedNoteResults = searchResults?.parsedNotes ?? NO_RESULTS
 
-const [listData, results, sortedResults] = useMemo(() => {
-  let sortedResults = parsedNoteResults
-  const direction = sortDirection === SortDirection.Ascending ? 'asc' : 'desc'
-  const sortFields: Record<SortType, keyof NoteItemData> = {
-    [SortType.FolderName]: 'folderTitle',
-    [SortType.NoteName]: 'title',
-    [SortType.Matches]: 'matchCount',
-    [SortType.Updated]: 'updated_time',
-    // ignored
-    [SortType.Relevance]: 'id',
-  }
+  const [listData, results, sortedResults] = useMemo(() => {
+    let sortedResults = parsedNoteResults
+    const direction = sortDirection === SortDirection.Ascending ? 'asc' : 'desc'
+    const sortFields: Record<SortType, keyof NoteItemData> = {
+      [SortType.FolderName]: 'folderTitle',
+      [SortType.NoteName]: 'title',
+      [SortType.Matches]: 'matchCount',
+      [SortType.Updated]: 'updated_time',
+      [SortType.Relevance]: 'id',
+    }
 
-  if (sortType !== SortType.Relevance) {
-    const sortField = sortFields[sortType]
-    sortedResults = orderBy(parsedNoteResults, (r) => r.noteItem[sortField], [direction])
-  }
+    if (sortType !== SortType.Relevance) {
+      const sortField = sortFields[sortType]
+      sortedResults = orderBy(parsedNoteResults, (r) => r.noteItem[sortField], [direction])
+    }
 
-  const finalSortedResults = sortedResults.map((parsedNote) => [parsedNote.noteItem, ...parsedNote.fragmentItems])
+    const finalSortedResults = sortedResults.map((parsedNote) => [parsedNote.noteItem, ...parsedNote.fragmentItems])
 
-  const flattenedResults: NoteSearchItemData[] = finalSortedResults.flat()
+    const flattenedResults: NoteSearchItemData[] = finalSortedResults.flat()
 
-  const noteListData = new NoteSearchListData(flattenedResults)
-  
-  // NEU: Initial alle Notizen als collapsed setzen, wenn NICHT nur Titel gesucht wird
-  if (!titlesOnly) {
-    noteListData.initializeAllCollapsed()
-  }
-  
-  return [noteListData, flattenedResults, sortedResults] as const
-}, [parsedNoteResults, sortType, sortDirection, titlesOnly])  // WICHTIG: titlesOnly als Dependency hinzufügen!
-
-//  useEffect(() => {
-//    listData.resultsUpdated()
-//  }, [listData, results, results.length])
+    const noteListData = new NoteSearchListData(flattenedResults)
+    
+    if (!titlesOnly) {
+      noteListData.initializeAllCollapsed()
+    }
+    
+    return [noteListData, flattenedResults, sortedResults] as const
+  }, [parsedNoteResults, sortType, sortDirection, titlesOnly])
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target
@@ -179,13 +182,8 @@ const [listData, results, sortedResults] = useMemo(() => {
     }
     initializedRef.current = true
 
-    // Horribly hacky attempt to figure out what the current theme is
-    // This will not scale, but I can't find an immediate way to query Joplin's theme settings
-
     const computedStyle = window.getComputedStyle(document.documentElement)
-
     const backgroundColor = computedStyle.getPropertyValue('background-color')
-
     const parsedColor = parseColor(backgroundColor)
 
     let themeColor = 'theme-dark'
@@ -210,7 +208,6 @@ const [listData, results, sortedResults] = useMemo(() => {
     rendered = 'No results found'
   } else {
     const totalMatches = results.filter((r) => isFragmentItem(r)).length
-    // https://flowbite.com/docs/forms/select/
     const selectClassname =
       'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 min-w-28'
 
@@ -252,6 +249,7 @@ const [listData, results, sortedResults] = useMemo(() => {
         <div className="mb-1">
           {totalMatches} matches in {searchResults.notes.length} notes
         </div>
+
         <div className="grow">
           <ResultsList
             query={searchText}
@@ -300,5 +298,4 @@ const [listData, results, sortedResults] = useMemo(() => {
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
-
 root.render(<App />)
