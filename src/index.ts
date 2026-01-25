@@ -9,7 +9,24 @@ export interface SearchQueryOptions {
   titlesOnly?: boolean
 }
 
-// NEU: Hilfsfunktion zum Extrahieren von Text aus Titel
+// GEÄNDERT: Neue Funktion für Extraktion von rechts
+function extractFromTitleRight(title: string, startDelim: string, endDelim: string): string | null {
+  // Von rechts nach links suchen
+  const endIndex = title.lastIndexOf(endDelim)
+  if (endIndex === -1) return null
+  
+  // Jetzt von diesem Punkt rückwärts nach startDelim suchen
+  const searchEnd = endIndex
+  const startIndex = title.lastIndexOf(startDelim, searchEnd)
+  
+  if (startIndex === -1) return null
+  
+  const searchStart = startIndex + startDelim.length
+  const extracted = title.substring(searchStart, endIndex).trim()
+  return extracted || null
+}
+
+// Original-Funktion für Extraktion von links (für F4)
 function extractFromTitle(title: string, startDelim: string, endDelim: string): string | null {
   const startIndex = title.indexOf(startDelim)
   if (startIndex === -1) return null
@@ -29,7 +46,7 @@ const handler = {
     await joplin.commands.execute('openNote', noteId)
   },
   
-  // NEU: Holt Text zwischen "– " und "[" aus dem Titel
+  // F4: Text zwischen "– " und "[" aus dem Titel
   getTitleBeforeBracket: async (): Promise<string | null> => {
     try {
       const note = await joplin.workspace.selectedNote()
@@ -42,20 +59,21 @@ const handler = {
     }
   },
   
-  // NEU: Holt Text zwischen "[" und "]" aus dem Titel
+  // F5: Text zwischen "[" und "]" - JETZT VON RECHTS!
   getTitleInBrackets: async (): Promise<string | null> => {
     try {
       const note = await joplin.workspace.selectedNote()
       if (!note || !note.title) return null
       
-      return extractFromTitle(note.title, '[', ']')
+      // GEÄNDERT: Von rechts nach links suchen
+      return extractFromTitleRight(note.title, '[', ']')
     } catch (error) {
       console.error('Error getting title in brackets:', error)
       return null
     }
   },
   
-  // NEU: Holt den aktuell markierten Text
+  // F7: Markierten Text
   getSelectedText: async (): Promise<string | null> => {
     try {
       const selectedText = await joplin.commands.execute('selectedText')
@@ -174,7 +192,6 @@ joplin.plugins.register({
 
     setUpSearchPanel(panel)
 
-    // Haupt-Toggle-Command
     joplin.commands.register({
       name: 'isquaredsoftware.vscode-search.toggle_panel',
       label: 'Toggle VS Code-style search panel',
@@ -187,7 +204,6 @@ joplin.plugins.register({
       },
     })
 
-    // NEU: F4 - Text zwischen "– " und "[" suchen
     joplin.commands.register({
       name: 'isquaredsoftware.vscode-search.search_title_before_bracket',
       label: 'Search: Title text before bracket',
@@ -201,7 +217,6 @@ joplin.plugins.register({
       },
     })
 
-    // NEU: F5 - Text zwischen "[" und "]" suchen
     joplin.commands.register({
       name: 'isquaredsoftware.vscode-search.search_title_in_brackets',
       label: 'Search: Title text in brackets',
@@ -215,7 +230,6 @@ joplin.plugins.register({
       },
     })
 
-    // NEU: F7 - Markierten Text suchen
     joplin.commands.register({
       name: 'isquaredsoftware.vscode-search.search_selected_text',
       label: 'Search: Selected text',
@@ -229,7 +243,6 @@ joplin.plugins.register({
       },
     })
 
-    // Menu-Item für Hauptfunktion
     joplin.views.menuItems.create(
       'isquaredsoftware.vscode-search.toggle_panel.menuitem',
       'isquaredsoftware.vscode-search.toggle_panel',
@@ -237,7 +250,6 @@ joplin.plugins.register({
       { accelerator: 'CmdOrCtrl+Shift+F' },
     )
 
-    // NEU: Menu-Items für neue Commands mit Tastenkürzeln
     joplin.views.menuItems.create(
       'isquaredsoftware.vscode-search.search_title_before_bracket.menuitem',
       'isquaredsoftware.vscode-search.search_title_before_bracket',
