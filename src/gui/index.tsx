@@ -74,10 +74,30 @@ function App() {
   const [sortType, setSortType] = useState(SortType.Relevance)
   const [sortDirection, setSortDirection] = useState(SortDirection.Descending)
   
-  // NEU: Move Mode States
+  // Move Mode States
   const [moveMode, setMoveMode] = useState(false)
-  const [noteMovements, setNoteMovements] = useState<Map<string, 'none' | 'aussortiert' | 'museum'>>(new Map())
+  const [noteMovements, setNoteMovements] = useState<Map<string, 'none' | 'folder1' | 'folder2'>>(new Map())
   const [isMoving, setIsMoving] = useState(false)
+  
+  // NEU: Konfigurations-States
+  const [showConfig, setShowConfig] = useState(false)
+  const [allFolders, setAllFolders] = useState<Folder[]>([])
+  const [targetFolder1, setTargetFolder1] = useState<string>('')
+  const [targetFolder2, setTargetFolder2] = useState<string>('')
+
+  // NEU: Lade alle Notizbücher beim ersten Öffnen des Config-Panels
+  useEffect(() => {
+    if (showConfig && allFolders.length === 0) {
+      client.stub.getAllFolders().then(folders => {
+        setAllFolders(folders)
+        // Setze Defaults falls noch nicht gesetzt
+        if (!targetFolder1 && folders.length > 0) setTargetFolder1(folders[0].id)
+        if (!targetFolder2 && folders.length > 1) setTargetFolder2(folders[1].id)
+      }).catch(err => {
+        console.error('Error loading folders:', err)
+      })
+    }
+  }, [showConfig])
 
   useEffect(() => {
     commandMessageHandler = async (msg: any) => {
@@ -123,7 +143,6 @@ function App() {
     }
   }, [])
 
-  // NEU: Handler für Move Mode Toggle
   const handleMoveModeChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { checked } = e.target
     setMoveMode(checked)
@@ -132,8 +151,7 @@ function App() {
     }
   }
 
-  // NEU: Handler für Note Movement Selection
-  const handleNoteMovementChange = (noteId: string, target: 'none' | 'aussortiert' | 'museum') => {
+  const handleNoteMovementChange = (noteId: string, target: 'none' | 'folder1' | 'folder2') => {
     setNoteMovements(prev => {
       const newMap = new Map(prev)
       newMap.set(noteId, target)
@@ -141,16 +159,24 @@ function App() {
     })
   }
 
-  // NEU: Handler für Execute Moves Button
+  // GEÄNDERT: Nutzt jetzt die konfigurierten Folder
   const handleExecuteMoves = async () => {
     try {
+      if (!targetFolder1 || !targetFolder2) {
+        alert('Please configure target folders first')
+        setShowConfig(true)
+        return
+      }
+
       setIsMoving(true)
       
-      const movesToExecute: { noteId: string; target: 'aussortiert' | 'museum' }[] = []
+      const movesToExecute: { noteId: string; folderId: string }[] = []
       
       noteMovements.forEach((target, noteId) => {
-        if (target !== 'none') {
-          movesToExecute.push({ noteId, target })
+        if (target === 'folder1') {
+          movesToExecute.push({ noteId, folderId: targetFolder1 })
+        } else if (target === 'folder2') {
+          movesToExecute.push({ noteId, folderId: targetFolder2 })
         }
       })
       
@@ -159,7 +185,6 @@ function App() {
         return
       }
       
-      await client.stub.ensureMoveFoldersExist()
       await client.stub.moveNotes(movesToExecute)
       
       alert(`Successfully moved ${movesToExecute.length} note(s)`)
@@ -267,6 +292,10 @@ function App() {
     inputRef.current?.focus()
   }, [])
 
+  // NEU: Hole die Namen der konfigurierten Folder
+  const folder1Name = allFolders.find(f => f.id === targetFolder1)?.title || 'Folder 1'
+  const folder2Name = allFolders.find(f => f.id === targetFolder2)?.title || 'Folder 2'
+
   let rendered: React.ReactNode = null
 
   if (!searchText) {
@@ -329,6 +358,8 @@ function App() {
             moveMode={moveMode}
             noteMovements={noteMovements}
             onNoteMovementChange={handleNoteMovementChange}
+            folder1Name={folder1Name}
+            folder2Name={folder2Name}
             status="resolved"
             openNote={async (id, line?: number) => {
               await client.stub.openNote(id, line)
@@ -368,15 +399,63 @@ function App() {
           </label>
           
           {moveMode && (
-            <button
-              onClick={handleExecuteMoves}
-              disabled={isMoving}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm"
-            >
-              {isMoving ? 'Moving...' : 'Execute Moves'}
-            </button>
+            <>
+              <button
+                onClick={() => setShowConfig(!showConfig)}
+                className="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                title="Configure target folders"
+              >
+                ⚙️
+              </button>
+              <button
+                onClick={handleExecuteMoves}
+                disabled={isMoving}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm"
+              >
+                {isMoving ? 'Moving...' : 'Execute Moves'}
+              </button>
+            </>
           )}
         </div>
+
+        {/* NEU: Konfigurations-Panel */}
+        {showConfig && (
+          <div className="mb-2 p-3 border border-blue-300 rounded bg-blue-50 dark:bg-gray-800 dark:border-blue-700">
+            <h4 className="font-bold mb-2">Configure Target Folders</h4>
+            <div className="space-y-2">
+              <div>
+                <label className="block text-sm mb-1">Middle Radio Button → Move to:</label>
+                <select
+                  value={targetFolder1}
+                  onChange={(e) => setTargetFolder1(e.target.value)}
+                  className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600"
+                >
+                  {allFolders.map(folder => (
+                    <option key={folder.id} value={folder.id}>{folder.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Right Radio Button → Move to:</label>
+                <select
+                  value={targetFolder2}
+                  onChange={(e) => setTargetFolder2(e.target.value)}
+                  className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600"
+                >
+                  {allFolders.map(folder => (
+                    <option key={folder.id} value={folder.id}>{folder.title}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={() => setShowConfig(false)}
+                className="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {rendered}
