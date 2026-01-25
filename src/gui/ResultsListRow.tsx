@@ -23,9 +23,11 @@ export type ItemData = {
   folders: Folder[]
   query: string
   titlesOnly: boolean
-  moveMode: boolean  // NEU
-  noteMovements: Map<string, 'none' | 'aussortiert' | 'museum'>  // NEU
-  onNoteMovementChange: (noteId: string, target: 'none' | 'aussortiert' | 'museum') => void  // NEU
+  moveMode: boolean
+  noteMovements: Map<string, 'none' | 'folder1' | 'folder2'>
+  onNoteMovementChange: (noteId: string, target: 'none' | 'folder1' | 'folder2') => void
+  folder1Name: string  // NEU
+  folder2Name: string  // NEU
   openNote: (noteId: string, line?: number) => void
 }
 
@@ -41,7 +43,7 @@ export default function ResultsListItem({
   const { itemData, listData: genericListData } = data
 
   const listData = genericListData as NoteSearchListData
-  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange } = itemData
+  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name } = itemData
   const { isCollapsed, result } = listData.getItemAtIndex(index)
 
   if (isNoteItem(result)) {
@@ -53,9 +55,11 @@ export default function ResultsListItem({
         titlesOnly={titlesOnly}
         result={result}
         folders={folders}
-        moveMode={moveMode}  // NEU
-        noteMovements={noteMovements}  // NEU
-        onNoteMovementChange={onNoteMovementChange}  // NEU
+        moveMode={moveMode}
+        noteMovements={noteMovements}
+        onNoteMovementChange={onNoteMovementChange}
+        folder1Name={folder1Name}  // NEU
+        folder2Name={folder2Name}  // NEU
         style={style}
         openNote={openNote}
       />
@@ -74,9 +78,11 @@ function LocationRow({
   titlesOnly,
   result,
   folders,
-  moveMode,  // NEU
-  noteMovements,  // NEU
-  onNoteMovementChange,  // NEU
+  moveMode,
+  noteMovements,
+  onNoteMovementChange,
+  folder1Name,  // NEU
+  folder2Name,  // NEU
   style,
   openNote,
 }: {
@@ -86,9 +92,11 @@ function LocationRow({
   titlesOnly: boolean
   result: NoteItemData
   folders: Folder[]
-  moveMode: boolean  // NEU
-  noteMovements: Map<string, 'none' | 'aussortiert' | 'museum'>  // NEU
-  onNoteMovementChange: (noteId: string, target: 'none' | 'aussortiert' | 'museum') => void  // NEU
+  moveMode: boolean
+  noteMovements: Map<string, 'none' | 'folder1' | 'folder2'>
+  onNoteMovementChange: (noteId: string, target: 'none' | 'folder1' | 'folder2') => void
+  folder1Name: string  // NEU
+  folder2Name: string  // NEU
   style: CSSProperties
   openNote: (noteId: string, line?: number) => void
 }) {
@@ -103,12 +111,11 @@ function LocationRow({
   const parentFolder = folders.find((folder) => folder.id === note.parent_id)
   const parentFolderTitle = parentFolder?.title ?? ''
 
-  // NEU: Aktueller Move-Status
   const currentMovement = noteMovements.get(id) || 'none'
 
   const noteHeaderContent = (
     <>
-      {/* NEU: Radio Buttons für Move Mode */}
+      {/* Radio Buttons für Move Mode mit Tooltips */}
       {moveMode && (
         <div className="flex gap-1 mr-2" onClick={(e) => e.stopPropagation()}>
           <label title="Keep in current folder" className="cursor-pointer">
@@ -120,21 +127,21 @@ function LocationRow({
               className="cursor-pointer"
             />
           </label>
-          <label title="Move to Aussortiert" className="cursor-pointer">
+          <label title={`Move to: ${folder1Name}`} className="cursor-pointer">
             <input
               type="radio"
               name={`move-${id}`}
-              checked={currentMovement === 'aussortiert'}
-              onChange={() => onNoteMovementChange(id, 'aussortiert')}
+              checked={currentMovement === 'folder1'}
+              onChange={() => onNoteMovementChange(id, 'folder1')}
               className="cursor-pointer"
             />
           </label>
-          <label title="Move to Museum" className="cursor-pointer">
+          <label title={`Move to: ${folder2Name}`} className="cursor-pointer">
             <input
               type="radio"
               name={`move-${id}`}
-              checked={currentMovement === 'museum'}
-              onChange={() => onNoteMovementChange(id, 'museum')}
+              checked={currentMovement === 'folder2'}
+              onChange={() => onNoteMovementChange(id, 'folder2')}
               className="cursor-pointer"
             />
           </label>
