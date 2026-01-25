@@ -78,7 +78,6 @@ const handler = {
     }
   },
 
-  // NEU: Holt alle Notizbücher - FEHLTE!
   getAllFolders: async (): Promise<Folder[]> => {
     try {
       const folders = await joplin.data.get(['folders'])
@@ -89,7 +88,6 @@ const handler = {
     }
   },
 
-  // GEÄNDERT: Nimmt jetzt dynamische Folder-IDs
   moveNotes: async (moves: { noteId: string; folderId: string }[]): Promise<void> => {
     try {
       for (const move of moves) {
@@ -207,14 +205,82 @@ async function setUpSearchPanel(panel: string) {
   await joplin.views.panels.addScript(panel, 'gui/index.js')
 }
 
+// NEU: Funktion zum Aktualisieren des Selection-Counter-Panels
+async function updateSelectionCounter(panel: string) {
+  const selectedNoteIds = await joplin.workspace.selectedNoteIds()
+  const count = selectedNoteIds.length
+  
+  let html = ''
+  if (count > 1) {
+    html = `
+      <div style="
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: bold;
+        color: #fff;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      ">
+        <span style="font-size: 14px;">⭐</span>
+        <span>${count} selected</span>
+      </div>
+    `
+  }
+  
+  await joplin.views.panels.setHtml(panel, html)
+}
+
 joplin.plugins.register({
   onStart: async function () {
     const panel = await joplin.views.panels.create('panel_1')
-
     await joplin.views.panels.hide(panel)
-
     setUpSearchPanel(panel)
 
+    // NEU: Selection Counter Panel erstellen
+    const selectionCounterPanel = await joplin.views.panels.create('selection_counter_panel')
+    await joplin.views.panels.addScript(selectionCounterPanel, './selectionCounter.css')
+    await joplin.views.panels.setHtml(selectionCounterPanel, '')
+    
+    // NEU: Toolbar-Button für Selection Counter
+    await joplin.views.toolbarButtons.create(
+      'selection_counter_button',
+      'toggle_selection_counter',
+      ToolbarButtonLocation.NoteToolbar
+    )
+
+    // NEU: Command für Selection Counter (macht nichts, nur für Button nötig)
+    await joplin.commands.register({
+      name: 'toggle_selection_counter',
+      label: 'Show Selection Count',
+      execute: async () => {
+        const visible = await joplin.views.panels.visible(selectionCounterPanel)
+        if (visible) {
+          await joplin.views.panels.hide(selectionCounterPanel)
+        } else {
+          await joplin.views.panels.show(selectionCounterPanel)
+          await updateSelectionCounter(selectionCounterPanel)
+        }
+      },
+    })
+
+    // NEU: Bei Änderung der Notiz-Auswahl Counter aktualisieren
+    await joplin.workspace.onNoteSelectionChange(async () => {
+      await updateSelectionCounter(selectionCounterPanel)
+      
+      // Panel automatisch zeigen wenn mehrere Notizen ausgewählt
+      const selectedNoteIds = await joplin.workspace.selectedNoteIds()
+      if (selectedNoteIds.length > 1) {
+        await joplin.views.panels.show(selectionCounterPanel)
+      } else {
+        await joplin.views.panels.hide(selectionCounterPanel)
+      }
+    })
+
+    // Bestehende Commands...
     joplin.commands.register({
       name: 'isquaredsoftware.vscode-search.toggle_panel',
       label: 'Toggle VS Code-style search panel',
