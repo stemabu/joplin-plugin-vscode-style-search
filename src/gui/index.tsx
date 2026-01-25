@@ -19,13 +19,27 @@ import { isFragmentItem, NoteItemData, NoteSearchItemData, NoteSearchListData } 
 import ResultsList from './ResultsList'
 import { FilterButton } from './FilterButton'
 
+// Globale Variable für den Command-Handler
+let commandMessageHandler: ((msg: any) => void) | null = null
+
 const target: PostMessageTarget = {
   postMessage: async (message: any) => {
     webviewApi.postMessage(message)
   },
   onMessage(listener) {
     webviewApi.onMessage((originalMessage) => {
-      listener({ source: target, data: originalMessage.message })
+      const msg = originalMessage.message
+      
+      // ERST: Command-Messages verarbeiten
+      if (msg && msg.type && !msg.type.startsWith('@channel-rpc')) {
+        if (commandMessageHandler) {
+          commandMessageHandler(msg)
+          return // Wichtig: nicht weitergeben an ChannelClient
+        }
+      }
+      
+      // DANN: Alles andere an ChannelClient weitergeben
+      listener({ source: target, data: msg })
     })
   },
 }
@@ -64,16 +78,9 @@ function App() {
   const [sortType, setSortType] = useState(SortType.Relevance)
   const [sortDirection, setSortDirection] = useState(SortDirection.Descending)
 
-  // NEU: Handler für Keyboard-Shortcuts - nur einmal registrieren
+  // NEU: Handler für Command-Messages als Callback registrieren
   useEffect(() => {
-    const messageHandler = async (originalMessage: any) => {
-      const msg = originalMessage.message
-      
-      // WICHTIG: Nur unsere Command-Messages verarbeiten, keine RPC-Messages
-      if (!msg || !msg.type || msg.type.startsWith('@channel-rpc')) {
-        return
-      }
-
+    commandMessageHandler = async (msg: any) => {
       console.log('Received command message:', msg)
 
       try {
@@ -111,13 +118,10 @@ function App() {
       }
     }
 
-    webviewApi.onMessage(messageHandler)
-    
-    // Cleanup ist bei webviewApi.onMessage nicht nötig, aber für Klarheit:
     return () => {
-      // webviewApi hat keine removeListener-Methode, daher leer
+      commandMessageHandler = null
     }
-  }, []) // Leeres Dependency-Array = nur einmal ausführen
+  }, [])
 
   const {
     value: searchResults,
