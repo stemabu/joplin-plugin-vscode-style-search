@@ -214,19 +214,16 @@ async function updateSelectionCounter(panel: string) {
   if (count > 1) {
     html = `
       <div style="
-        padding: 4px 8px;
-        font-size: 12px;
-        font-weight: bold;
-        color: #fff;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 4px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        padding: 6px 12px;
+        font-size: 13px;
+        color: #888;
+        background: #f5f5f5;
+        border: 1px solid #e0e0e0;
+        border-radius: 3px;
+        display: inline-block;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       ">
-        <span style="font-size: 14px;">⭐</span>
-        <span>${count} selected</span>
+        ${count} Notizen markiert
       </div>
     `
   }
