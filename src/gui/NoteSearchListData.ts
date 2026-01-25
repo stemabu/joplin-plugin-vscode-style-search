@@ -55,6 +55,21 @@ export class NoteSearchListData extends GenericListData<Item> {
     this.orderedResults = orderedResults
   }
 
+  // NEU: Methode zum initialen Collapsed-Setzen hinzufügen
+  initializeAllCollapsed() {
+    this.clearCollapsed()
+    for (const [resultIndex, result] of this.orderedResults.entries()) {
+      if (!isNoteItem(result)) {
+        continue
+      }
+
+      this.collapsedResultIndexToCountMap.set(resultIndex, result.matchCount)
+      this.collapsedRowCount += result.matchCount
+    }
+
+    this.invalidate()
+  }
+
   resultsUpdated() {
     this.clearCollapsed()
     this.invalidate()
