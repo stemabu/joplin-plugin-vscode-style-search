@@ -188,17 +188,14 @@ function App() {
       
       // Success-Message anzeigen
       setSuccessMessage(`✓ Successfully moved ${movesToExecute.length} note(s)`)
+      setTimeout(() => setSuccessMessage(''), 3000)
       
+      // Reset selections
       setNoteMovements(new Map())
       setMoveMode(false)
       
-      // GEÄNDERT: Warte mit Re-Search bis nach der Message (3.5 Sekunden)
-      setTimeout(() => {
-        setSuccessMessage('')
-        const currentSearch = searchText
-        setSearchText('')
-        setTimeout(() => setSearchText(currentSearch), 100)
-      }, 3000)
+      // ENTFERNT: Keine automatische Re-Search mehr
+      // Der Benutzer kann bei Bedarf selbst neu suchen
       
     } catch (error) {
       console.error('Error executing moves:', error)
