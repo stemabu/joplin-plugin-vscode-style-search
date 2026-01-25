@@ -157,7 +157,7 @@ function App() {
     })
   }
 
-  const handleExecuteMoves = async () => {
+    const handleExecuteMoves = async () => {
     try {
       if (!targetFolder1 || !targetFolder2) {
         setSuccessMessage('Please configure target folders first')
@@ -188,14 +188,15 @@ function App() {
       
       // Success-Message anzeigen
       setSuccessMessage(`✓ Successfully moved ${movesToExecute.length} note(s)`)
-      setTimeout(() => setSuccessMessage(''), 3000)
       
       // Reset selections
       setNoteMovements(new Map())
-      setMoveMode(false)
       
-      // ENTFERNT: Keine automatische Re-Search mehr
-      // Der Benutzer kann bei Bedarf selbst neu suchen
+      // GEÄNDERT: moveMode erst NACH 3 Sekunden ausschalten
+      setTimeout(() => {
+        setSuccessMessage('')
+        setMoveMode(false)
+      }, 3000)
       
     } catch (error) {
       console.error('Error executing moves:', error)
