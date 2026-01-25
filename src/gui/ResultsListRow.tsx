@@ -118,7 +118,7 @@ function LocationRow({
     rowContent = (
       <Expandable
         children={null}
-        defaultOpen={titlesOnly ? false : !isCollapsed}
+        defaultOpen={false}  // Geändert: Suchergebnis immer eingeklappt anzeigen
         header={noteHeaderContent}
         headerClassName={styles.LocationRow}
         key={id + isCollapsed.toString() /* Re-apply defaultCollapsed if row content changes */}
