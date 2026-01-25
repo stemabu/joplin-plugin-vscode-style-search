@@ -213,6 +213,15 @@ async function updateSelectionCounter(panel: string) {
   let html = ''
   if (count > 1) {
     html = `
+      <style>
+        body {
+          margin: 0;
+          padding: 4px;
+          overflow: hidden;
+          max-height: 40px !important;
+          height: 40px !important;
+        }
+      </style>
       <div style="
         padding: 6px 12px;
         font-size: 13px;
