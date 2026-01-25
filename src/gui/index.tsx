@@ -64,14 +64,17 @@ function App() {
   const [sortType, setSortType] = useState(SortType.Relevance)
   const [sortDirection, setSortDirection] = useState(SortDirection.Descending)
 
-  // NEU: Handler für Keyboard-Shortcuts
+  // NEU: Handler für Keyboard-Shortcuts - nur einmal registrieren
   useEffect(() => {
     const messageHandler = async (originalMessage: any) => {
       const msg = originalMessage.message
       
-      console.log('Received message in frontend:', msg)
-      
-      if (!msg || !msg.type) return
+      // WICHTIG: Nur unsere Command-Messages verarbeiten, keine RPC-Messages
+      if (!msg || !msg.type || msg.type.startsWith('@channel-rpc')) {
+        return
+      }
+
+      console.log('Received command message:', msg)
 
       try {
         switch (msg.type) {
@@ -109,7 +112,12 @@ function App() {
     }
 
     webviewApi.onMessage(messageHandler)
-  }, [])
+    
+    // Cleanup ist bei webviewApi.onMessage nicht nötig, aber für Klarheit:
+    return () => {
+      // webviewApi hat keine removeListener-Methode, daher leer
+    }
+  }, []) // Leeres Dependency-Array = nur einmal ausführen
 
   const {
     value: searchResults,
