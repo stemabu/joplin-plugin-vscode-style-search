@@ -121,9 +121,9 @@ const [listData, results, sortedResults] = useMemo(() => {
   return [noteListData, flattenedResults, sortedResults] as const
 }, [parsedNoteResults, sortType, sortDirection, titlesOnly])  // WICHTIG: titlesOnly als Dependency hinzufügen!
 
-  useEffect(() => {
-    listData.resultsUpdated()
-  }, [listData, results, results.length])
+//  useEffect(() => {
+//    listData.resultsUpdated()
+//  }, [listData, results, results.length])
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target
