@@ -16,9 +16,11 @@ interface ResultsListProps {
   folders: Folder[]
   listData: NoteSearchListData
   titlesOnly: boolean
-  moveMode: boolean  // NEU
-  noteMovements: Map<string, 'none' | 'aussortiert' | 'museum'>  // NEU
-  onNoteMovementChange: (noteId: string, target: 'none' | 'aussortiert' | 'museum') => void  // NEU
+  moveMode: boolean
+  noteMovements: Map<string, 'none' | 'folder1' | 'folder2'>
+  onNoteMovementChange: (noteId: string, target: 'none' | 'folder1' | 'folder2') => void
+  folder1Name: string  // NEU
+  folder2Name: string  // NEU
   openNote: (noteId: string, line?: number) => void
 }
 
@@ -29,9 +31,11 @@ export default function ResultsList({
   listData,
   folders,
   titlesOnly,
-  moveMode,  // NEU
-  noteMovements,  // NEU
-  onNoteMovementChange,  // NEU
+  moveMode,
+  noteMovements,
+  onNoteMovementChange,
+  folder1Name,  // NEU
+  folder2Name,  // NEU
   openNote,
 }: ResultsListProps) {
   const isPending = status === STATUS_PENDING
@@ -43,12 +47,14 @@ export default function ResultsList({
       results,
       folders,
       titlesOnly,
-      moveMode,  // NEU
-      noteMovements,  // NEU
-      onNoteMovementChange,  // NEU
+      moveMode,
+      noteMovements,
+      onNoteMovementChange,
+      folder1Name,  // NEU
+      folder2Name,  // NEU
       openNote,
     }
-  }, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, openNote])
+  }, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, openNote])
 
   if (status === STATUS_RESOLVED && results.length === 0) {
     return <div>No results found somehow!</div>
