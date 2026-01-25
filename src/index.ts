@@ -205,37 +205,43 @@ async function setUpSearchPanel(panel: string) {
   await joplin.views.panels.addScript(panel, 'gui/index.js')
 }
 
-// NEU: Funktion zum Aktualisieren des Selection-Counter-Panels
+// Funktion zum Aktualisieren des Selection-Counter-Panels
 async function updateSelectionCounter(panel: string) {
   const selectedNoteIds = await joplin.workspace.selectedNoteIds()
   const count = selectedNoteIds.length
   
-  let html = ''
-  if (count > 1) {
-    html = `
-      <style>
-        body {
-          margin: 0;
-          padding: 4px;
-          overflow: hidden;
-          max-height: 40px !important;
-          height: 40px !important;
-        }
-      </style>
-      <div style="
-        padding: 6px 12px;
-        font-size: 13px;
-        color: #888;
-        background: #f5f5f5;
-        border: 1px solid #e0e0e0;
-        border-radius: 3px;
-        display: inline-block;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      ">
-        ${count} Notizen markiert
-      </div>
-    `
+  let text = ''
+  if (count === 0) {
+    text = 'Keine Notiz markiert'
+  } else if (count === 1) {
+    text = 'Eine Notiz markiert'
+  } else {
+    text = `${count} Notizen markiert`
   }
+  
+  const html = `
+    <style>
+      body {
+        margin: 0;
+        padding: 4px;
+        overflow: hidden;
+        max-height: 40px !important;
+        height: 40px !important;
+      }
+    </style>
+    <div style="
+      padding: 6px 12px;
+      font-size: 13px;
+      color: #888;
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-radius: 3px;
+      display: inline-block;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    ">
+      ${text}
+    </div>
+  `
   
   await joplin.views.panels.setHtml(panel, html)
 }
