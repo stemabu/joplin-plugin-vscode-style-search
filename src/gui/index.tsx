@@ -157,7 +157,7 @@ function App() {
     })
   }
 
-    const handleExecuteMoves = async () => {
+  const handleExecuteMoves = async () => {
     try {
       if (!targetFolder1 || !targetFolder2) {
         setSuccessMessage('Please configure target folders first')
@@ -192,10 +192,15 @@ function App() {
       // Reset selections
       setNoteMovements(new Map())
       
-      // GEÄNDERT: moveMode erst NACH 3 Sekunden ausschalten
+      // NACH 3 Sekunden: Message ausblenden, Mode deaktivieren UND Suche aktualisieren
+      const currentSearch = searchText
       setTimeout(() => {
         setSuccessMessage('')
         setMoveMode(false)
+        
+        // Suche aktualisieren um neue Ordner anzuzeigen
+        setSearchText('')
+        setTimeout(() => setSearchText(currentSearch), 100)
       }, 3000)
       
     } catch (error) {
