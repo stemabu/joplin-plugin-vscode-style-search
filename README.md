@@ -6,7 +6,7 @@ You can search for text just in note titles with the "Search in titles only" che
 
 Toggle the panel with `CTRL-SHIFT-F`.
 
-**This Special Edition of the plugin by Stemabu has a mode to move found notes to two selectable notebooks. Usecase is sorting of notes and sorting out of dublicates.**
+**This Special Edition of the plugin includes a mode that moves found notes to selectable notebooks. The use case is sorting notes and removing duplicates.**
 
 ![Screenshot of the plugin](docs/images/joplin-plugin-vscode-style-search-basic-screenshot-01.png)
 
