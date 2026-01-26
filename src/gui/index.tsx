@@ -74,7 +74,7 @@ function App() {
   const [sortType, setSortType] = useState(SortType.Relevance)
   const [sortDirection, setSortDirection] = useState(SortDirection.Descending)
   
-  const [moveMode, setMoveMode] = useState(false)
+  const [moveMode, setMoveMode] = useState(true)
   const [noteMovements, setNoteMovements] = useState<Map<string, 'none' | 'folder1' | 'folder2'>>(new Map())
   const [isMoving, setIsMoving] = useState(false)
   
