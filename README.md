@@ -1,10 +1,12 @@
-# VS-Code Style Search Plugin for Joplin
+# VS-Code Style Search Plugin for Joplin Special Edition
 
 This Joplin plugin provides a note search panel that is patterned after the search panel in VS Code. Search for text, and matches will be shown grouped by file, one line per match, with the match text highlighted. Both plain text and regular expression syntax should work.
 
 You can search for text just in note titles with the "Search in titles only" checkbox. (This only returns exact title prefix matches by default - you may need to use regular expression syntax like `note*` to search for partial title matches.)
 
 Toggle the panel with `CTRL-SHIFT-F`.
+
+**This Special Edition of the plugin by Stemabu has a mode to move found notes to two selectable notebooks. Usecase is sorting of notes and sorting out of dublicates.**
 
 ![Screenshot of the plugin](docs/images/joplin-plugin-vscode-style-search-basic-screenshot-01.png)
 
