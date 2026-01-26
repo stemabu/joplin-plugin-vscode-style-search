@@ -1,19 +1,27 @@
 import { marked } from 'marked'
-import { convert as htmlToText } from 'html-to-text'
-import { FragmentItemData, NoteItemData, NoteSearchItemData } from './NoteSearchListData'
-import { ComplexTerm } from './searchProcessing'
-import { Folder, Note } from 'src'
+import { htmlToText } from 'html-to-text'
+import type { Note, Folder } from '../index'
+import type { FragmentItemData, NoteItemData } from './NoteSearchListData'
 import indexToPosition from 'index-to-position'
+import type { ComplexTerm } from './searchProcessing'
 
-export const parsedNoteBodies = new Map<string, string>()
+const parsedNoteBodies = new Map<string, string>()
 
-export interface ParsedNote {
+export type ParsedNote = {
   noteItem: NoteItemData
   fragmentItems: FragmentItemData[]
 }
 
+// NEU: Funktion zum Entfernen von HTML-Tags
+const stripHtmlTags = (text: string): string => {
+  // Entfernt alle HTML-Tags inkl. fehlerhafter wie <b><span>text</strong>
+  return text.replace(/<[^>]*>/g, '')
+}
+
 export const parseNoteBody = (noteBody: string) => {
-  const htmlContent = marked.parse(noteBody) as string
+  // Erst HTML-Tags entfernen, dann Markdown parsen
+  const cleanedBody = stripHtmlTags(noteBody)
+  const htmlContent = marked.parse(cleanedBody) as string
   const strippedContent = htmlToText(htmlContent)
   return strippedContent
 }
