@@ -56,19 +56,25 @@ const client = new ChannelClient<HandlerType>({
 const NO_RESULTS: ParsedNote[] = []
 
 enum SortType {
-  Relevance = 'Relevance',
-  Updated = 'Updated',
-  Matches = 'Matches',
-  NoteName = 'Note Name',
-  FolderName = 'Folder Name',
+  Relevance = 'Relevanz',
+  Updated = 'Aktualisiert',
+  Matches = 'Treffer',
+  NoteName = 'Notizname',
+  FolderName = 'Ordnername',
+  Similarity = 'Ähnlichkeit',
 }
 
 enum SortDirection {
-  Ascending = 'Ascending',
-  Descending = 'Descending',
+  Ascending = 'Aufsteigend',
+  Descending = 'Absteigend',
 }
 
+type Mode = 'search' | 'similarity'
+type SimilarityAlgorithm = 'jaccard' | 'cosine' | 'dice'
+
 function App() {
+  const [mode, setMode] = useState<Mode>('search')
+  
   const [searchText, setSearchText] = useState('')
   const [titlesOnly, setTitlesOnly] = useState(false)
   const [sortType, setSortType] = useState(SortType.Relevance)
@@ -84,7 +90,13 @@ function App() {
   const [targetFolder2, setTargetFolder2] = useState<string>('')
 
   const [successMessage, setSuccessMessage] = useState<string>('')
-
+  
+  // NEU: Ähnlichkeits-States
+  const [similarityAlgorithm, setSimilarityAlgorithm] = useState<SimilarityAlgorithm>('jaccard')
+  const [similarityThreshold, setSimilarityThreshold] = useState(30)
+  const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
+  const [similarities, setSimilarities] = useState<Record<string, number>>({})
+  
   useEffect(() => {
     if (showConfig && allFolders.length === 0) {
       client.stub.getAllFolders().then(folders => {
