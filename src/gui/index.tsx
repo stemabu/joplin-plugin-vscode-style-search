@@ -352,8 +352,10 @@ function App() {
 
   let rendered: React.ReactNode = null
 
-  if (!searchText) {
-    rendered = 'Enter a search term'
+  const hasContent = mode === 'search' ? !!searchText : !!currentNoteId
+
+  if (!hasContent) {
+    rendered = mode === 'search' ? 'Suchbegriff eingeben' : 'Notiz auswählen um ähnliche zu finden'
   } else if (loading) {
     rendered = 'Loading...'
   } else if (searchResults.parsedNotes.length === 0) {
