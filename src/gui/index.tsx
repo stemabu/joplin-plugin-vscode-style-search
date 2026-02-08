@@ -222,23 +222,61 @@ function App() {
   const {
     value: searchResults,
     loading,
-    error,
   } = useAsync(async () => {
-    const parsedKeywords = keywords(searchText)
-    let noteListData: NoteSearchItemData[] = []
     let notes: Note[] = []
     let folders: Folder[] = []
     let parsedNotes: ParsedNote[] = []
-    if (searchText) {
-      const searchResult = await client.stub.search({ searchText: searchText, titlesOnly })
-      notes = searchResult.notes
-      folders = searchResult.folders
+    let sims: Record<string, number> = {}
+    
+    if (mode === 'search') {
+      if (searchText) {
+        const parsedKeywords = keywords(searchText)
+        const searchResult = await client.stub.search({ searchText: searchText, titlesOnly })
+        notes = searchResult.notes
+        folders = searchResult.folders
 
-      parsedNotes = notes.map((note) => parseNote(note, parsedKeywords, folders, titlesOnly)).filter(Boolean)
+        parsedNotes = notes.map((note) => parseNote(note, parsedKeywords, folders, titlesOnly)).filter(Boolean)
+      }
+    } else {
+      // Similarity Mode
+      if (currentNoteId) {
+        const similarityResult = await client.stub.findSimilar({
+          referenceNoteId: currentNoteId,
+          titlesOnly,
+          algorithm: similarityAlgorithm,
+          threshold: similarityThreshold
+        })
+        
+        notes = similarityResult.notes
+        folders = similarityResult.folders
+        sims = similarityResult.similarities
+        
+        // Für Similarity keine Fragment-Items, nur Note-Items
+        parsedNotes = notes.map((note) => {
+          const folder = folders.find((f) => f.id === note.parent_id)
+          const folderTitle = folder?.title ?? ''
+          
+          const noteItem: NoteItemData = {
+            type: 'note',
+            id: note.id,
+            note,
+            title: note.title,
+            updated_time: note.updated_time,
+            folderTitle,
+            matchCount: 0,
+          }
+          
+          return {
+            noteItem,
+            fragmentItems: []
+          }
+        })
+      }
     }
 
-    return { notes, noteListData, parsedNotes, folders }
-  }, [searchText, titlesOnly])
+    setSimilarities(sims)
+    return { notes, noteListData: [], parsedNotes, folders }
+  }, [mode, searchText, titlesOnly, currentNoteId, similarityAlgorithm, similarityThreshold])
 
   const parsedNoteResults = searchResults?.parsedNotes ?? NO_RESULTS
 
