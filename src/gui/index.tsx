@@ -358,8 +358,8 @@ function App() {
     rendered = mode === 'search' ? 'Suchbegriff eingeben' : 'Notiz auswählen um ähnliche zu finden'
   } else if (loading) {
     rendered = 'Loading...'
-  } else if (searchResults.parsedNotes.length === 0) {
-    rendered = 'No results found'
+  } else if (searchResults?.parsedNotes.length === 0) {
+    rendered = mode === 'search' ? 'Keine Ergebnisse gefunden' : 'Keine ähnlichen Notizen gefunden'
   } else {
     const totalMatches = results.filter((r) => isFragmentItem(r)).length
     const selectClassname =
@@ -368,7 +368,9 @@ function App() {
     rendered = (
       <>
         <div className="flex justify-between">
-          <h3 className="mb-2 text-lg font-bold">Results</h3>
+          <h3 className="mb-2 text-lg font-bold">
+            {mode === 'search' ? 'Ergebnisse' : 'Ähnliche Notizen'}
+          </h3>
           <div className="flex">
             <select
               value={sortType}
