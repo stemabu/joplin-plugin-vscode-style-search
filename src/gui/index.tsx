@@ -97,31 +97,15 @@ function App() {
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
   const [similarities, setSimilarities] = useState<Record<string, number>>({})
   
-  useEffect(() => {
-    if (showConfig && allFolders.length === 0) {
-      client.stub.getAllFolders().then(folders => {
-        setAllFolders(folders)
-        if (!targetFolder1 && folders.length > 0) setTargetFolder1(folders[0].id)
-        if (!targetFolder2 && folders.length > 1) setTargetFolder2(folders[1].id)
-      }).catch(err => {
-        console.error('Error loading folders:', err)
-      })
-    }
-  }, [showConfig])
-
-  useEffect(() => {
+    useEffect(() => {
     commandMessageHandler = async (msg: any) => {
       console.log('Received command message:', msg)
 
       try {
         switch (msg.type) {
-          case 'SEARCH_TITLE_BEFORE_BRACKET': {
-            console.log('Handling SEARCH_TITLE_BEFORE_BRACKET')
-            const text = await client.stub.getTitleBeforeBracket()
-            console.log('Got text before bracket:', text)
-            if (text) {
-              setSearchText(text)
-            }
+          case 'TOGGLE_MODE': {
+            console.log('Toggling mode')
+            setMode(prev => prev === 'search' ? 'similarity' : 'search')
             break
           }
           case 'SEARCH_TITLE_IN_BRACKETS': {
@@ -129,6 +113,7 @@ function App() {
             const text = await client.stub.getTitleInBrackets()
             console.log('Got text in brackets:', text)
             if (text) {
+              setMode('search')
               setSearchText(text)
             }
             break
@@ -138,6 +123,7 @@ function App() {
             const text = await client.stub.getSelectedText()
             console.log('Got selected text:', text)
             if (text) {
+              setMode('search')
               setSearchText(text)
             }
             break
@@ -153,6 +139,15 @@ function App() {
     }
   }, [])
 
+  // NEU: Beim Wechsel in Similarity-Mode die aktuelle Notiz-ID laden
+  useEffect(() => {
+    if (mode === 'similarity') {
+      client.stub.getCurrentNoteId().then(id => {
+        setCurrentNoteId(id)
+      })
+    }
+  }, [mode])
+  
   const handleMoveModeChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { checked } = e.target
     setMoveMode(checked)
