@@ -9,6 +9,14 @@ export interface SearchQueryOptions {
   titlesOnly?: boolean
 }
 
+// NEU: Interface für Similarity-Suche
+export interface SimilarityQueryOptions {
+  referenceNoteId: string
+  titlesOnly?: boolean
+  algorithm: 'jaccard' | 'cosine' | 'dice'
+  threshold: number
+}
+
 // Funktion für Extraktion von rechts
 function extractFromTitleRight(title: string, startDelim: string, endDelim: string): string | null {
   const endIndex = title.lastIndexOf(endDelim)
@@ -36,6 +44,82 @@ function extractFromTitle(title: string, startDelim: string, endDelim: string): 
   
   const extracted = title.substring(searchStart, endIndex).trim()
   return extracted || null
+}
+
+// NEU: Titel für Ähnlichkeitsvergleich extrahieren
+function extractTitleForComparison(title: string): string {
+  const first10 = title.substring(0, 10)
+  const betweenDashAndBracket = extractFromTitle(title, '–', ']') || ''
+  return `${first10} ${betweenDashAndBracket}`.trim()
+}
+
+// NEU: Text in Wörter aufteilen
+function tokenize(text: string): string[] {
+  return text.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2)
+}
+
+// NEU: Jaccard Similarity
+function jaccardSimilarity(text1: string, text2: string): number {
+  const set1 = new Set(tokenize(text1))
+  const set2 = new Set(tokenize(text2))
+  const intersection = new Set([...set1].filter(x => set2.has(x)))
+  const union = new Set([...set1, ...set2])
+  return union.size === 0 ? 0 : intersection.size / union.size
+}
+
+// NEU: Dice Coefficient
+function diceSimilarity(text1: string, text2: string): number {
+  const set1 = new Set(tokenize(text1))
+  const set2 = new Set(tokenize(text2))
+  const intersection = new Set([...set1].filter(x => set2.has(x)))
+  return (set1.size + set2.size) === 0 ? 0 : (2 * intersection.size) / (set1.size + set2.size)
+}
+
+// NEU: Cosine Similarity
+function cosineSimilarity(text1: string, text2: string): number {
+  const words1 = tokenize(text1)
+  const words2 = tokenize(text2)
+  
+  const tf1 = new Map<string, number>()
+  const tf2 = new Map<string, number>()
+  
+  words1.forEach(w => tf1.set(w, (tf1.get(w) || 0) + 1))
+  words2.forEach(w => tf2.set(w, (tf2.get(w) || 0) + 1))
+  
+  const allWords = new Set([...words1, ...words2])
+  const vec1: number[] = []
+  const vec2: number[] = []
+  
+  allWords.forEach(word => {
+    vec1.push(tf1.get(word) || 0)
+    vec2.push(tf2.get(word) || 0)
+  })
+  
+  let dotProduct = 0
+  let norm1 = 0
+  let norm2 = 0
+  
+  for (let i = 0; i < vec1.length; i++) {
+    dotProduct += vec1[i] * vec2[i]
+    norm1 += vec1[i] * vec1[i]
+    norm2 += vec2[i] * vec2[i]
+  }
+  
+  const denominator = Math.sqrt(norm1) * Math.sqrt(norm2)
+  return denominator === 0 ? 0 : dotProduct / denominator
+}
+
+// NEU: Ähnlichkeit berechnen
+function calculateSimilarity(text1: string, text2: string, algorithm: 'jaccard' | 'cosine' | 'dice'): number {
+  switch (algorithm) {
+    case 'jaccard': return jaccardSimilarity(text1, text2)
+    case 'cosine': return cosineSimilarity(text1, text2)
+    case 'dice': return diceSimilarity(text1, text2)
+    default: return 0
+  }
 }
 
 const handler = {
@@ -75,6 +159,77 @@ const handler = {
     } catch (error) {
       console.error('Error getting selected text:', error)
       return null
+    }
+  },
+
+	  getCurrentNoteId: async (): Promise<string | null> => {
+    try {
+      const note = await joplin.workspace.selectedNote()
+      return note?.id || null
+    } catch (error) {
+      console.error('Error getting current note:', error)
+      return null
+    }
+  },
+
+  findSimilar: async (options: SimilarityQueryOptions): Promise<NotesSearchResults & { similarities: Record<string, number> }> => {
+    const { referenceNoteId, titlesOnly, algorithm, threshold } = options
+    
+    const referenceNote = await joplin.data.get(['notes', referenceNoteId], { 
+      fields: ['id', 'title', 'body', 'parent_id', 'created_time', 'updated_time']
+    })
+    
+    if (!referenceNote) {
+      return { notes: [], folders: [], similarities: {} }
+    }
+    
+    let allNotes: Note[] = []
+    let page = 1
+    let hasMore = true
+    
+    while (hasMore && allNotes.length < 10000) {
+      const allNotesResponse: SearchResponse<Note> = await joplin.data.get(['notes'], {
+        fields: ['id', 'title', 'body', 'parent_id', 'created_time', 'updated_time'],
+        page: page,
+        limit: 100
+      })
+      
+      allNotes = allNotes.concat(allNotesResponse.items)
+      hasMore = allNotesResponse.has_more
+      page++
+    }
+    
+    const notesToCompare = allNotes.filter(n => n.id !== referenceNoteId)
+    
+    let referenceText = titlesOnly 
+      ? extractTitleForComparison(referenceNote.title)
+      : `${referenceNote.title} ${referenceNote.body}`
+    
+    const similarities: Record<string, number> = {}
+    const similarNotes: Note[] = []
+    
+    for (const note of notesToCompare) {
+      let noteText = titlesOnly 
+        ? extractTitleForComparison(note.title)
+        : `${note.title} ${note.body}`
+      
+      const similarity = calculateSimilarity(referenceText, noteText, algorithm)
+      const similarityPercent = similarity * 100
+      
+      if (similarityPercent >= threshold) {
+        similarities[note.id] = similarityPercent
+        similarNotes.push(note)
+      }
+    }
+    
+    similarNotes.sort((a, b) => (similarities[b.id] || 0) - (similarities[a.id] || 0))
+    
+    const allFoldersResult: SearchResponse<Folder> = await joplin.data.get(['folders'], {})
+    
+    return {
+      notes: similarNotes,
+      folders: allFoldersResult.items,
+      similarities
     }
   },
 
