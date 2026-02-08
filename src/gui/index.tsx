@@ -289,9 +289,12 @@ function App() {
       [SortType.Matches]: 'matchCount',
       [SortType.Updated]: 'updated_time',
       [SortType.Relevance]: 'id',
+      [SortType.Similarity]: 'id',
     }
 
-    if (sortType !== SortType.Relevance) {
+    if (sortType === SortType.Similarity && mode === 'similarity') {
+      sortedResults = orderBy(parsedNoteResults, (r) => similarities[r.noteItem.id] || 0, [direction])
+    } else if (sortType !== SortType.Relevance) {
       const sortField = sortFields[sortType]
       sortedResults = orderBy(parsedNoteResults, (r) => r.noteItem[sortField], [direction])
     }
@@ -302,12 +305,12 @@ function App() {
 
     const noteListData = new NoteSearchListData(flattenedResults)
     
-    if (!titlesOnly) {
+    if (!titlesOnly && mode === 'search') {
       noteListData.initializeAllCollapsed()
     }
     
     return [noteListData, flattenedResults, sortedResults] as const
-  }, [parsedNoteResults, sortType, sortDirection, titlesOnly])
+  }, [parsedNoteResults, sortType, sortDirection, titlesOnly, mode, similarities])
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target
