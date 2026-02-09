@@ -608,7 +608,6 @@ useEffect(() => {
             folder2Name={folder2Name}
             mode={mode}
             similarities={similarities}
-            additionalFolderName={limitToFolders && additionalFolder ? (allFolders.find(f => f.id === additionalFolder)?.title || '') : ''}
             status="resolved"
             openNote={async (id, line?: number) => {
               await client.stub.openNote(id, line)
@@ -730,30 +729,52 @@ useEffect(() => {
           )}
         </div>
 
-        {moveMode && !showConfig && (
-          <div className="px-2 pb-2 pt-0">
-            {successMessage ? (
-              <div className="text-green-600 dark:text-green-400 font-semibold text-sm bg-green-50 dark:bg-green-900 dark:bg-opacity-20 px-2 py-1 rounded">
-                {successMessage}
-              </div>
-            ) : (
-              <div className="flex gap-3 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 rounded-full bg-gray-500"></span>
-                  Behalten
-                </span>
-                <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
-                  {folder1Name}
-                </span>
-                <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
-                  {folder2Name}
-                </span>
-              </div>
-            )}
+{(moveMode || (mode === 'similarity' && limitToFolders && additionalFolder)) && !showConfig && (
+  <div className="px-2 pb-2 pt-0">
+    {successMessage ? (
+      <div className="text-green-600 dark:text-green-400 font-semibold text-sm bg-green-50 dark:bg-green-900 dark:bg-opacity-20 px-2 py-1 rounded">
+        {successMessage}
+      </div>
+    ) : (
+      <div className="flex justify-between items-center">
+        {/* Verschieben-Info */}
+        {moveMode && (
+          <div className="flex gap-3 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+            <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-gray-500"></span>
+              Behalten
+            </span>
+            <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
+              {folder1Name}
+            </span>
+            <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+              {folder2Name}
+            </span>
           </div>
         )}
+        
+        {/* NEU: Ähnlichkeitssuche-Ordner Info */}
+        {mode === 'similarity' && limitToFolders && additionalFolder && (
+          <div className="flex gap-2 text-sm bg-purple-50 dark:bg-purple-900 dark:bg-opacity-20 px-2 py-1 rounded ml-auto">
+            <span className="text-purple-700 dark:text-purple-300 font-semibold">
+              Suche in:
+            </span>
+            <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-purple-500"></span>
+              Aktuelles Notizbuch
+            </span>
+            <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-purple-500"></span>
+              {allFolders.find(f => f.id === additionalFolder)?.title || 'Zusätzliches Notizbuch'}
+            </span>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
 
         {showConfig && (
           <div className="mb-2 p-3 border border-blue-300 rounded bg-blue-50 dark:bg-gray-800 dark:border-blue-700">
