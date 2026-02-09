@@ -230,16 +230,29 @@ const handler = {
       return null
     }
   },
+getCurrentNoteId: async (): Promise<string | null> => {
+  try {
+    const note = await joplin.workspace.selectedNote()
+    return note?.id || null
+  } catch (error) {
+    console.error('Error getting current note:', error)
+    return null
+  }
+},
 
-	  getCurrentNoteId: async (): Promise<string | null> => {
-    try {
-      const note = await joplin.workspace.selectedNote()
-      return note?.id || null
-    } catch (error) {
-      console.error('Error getting current note:', error)
-      return null
-    }
-  },
+// NEU: Folder-ID der aktuellen Notiz holen
+getCurrentNoteFolderId: async (): Promise<string | null> => {
+  try {
+    const note = await joplin.workspace.selectedNote()
+    if (!note) return null
+    
+    const noteData = await joplin.data.get(['notes', note.id], { fields: ['parent_id'] })
+    return noteData.parent_id || null
+  } catch (error) {
+    console.error('Error getting current note folder:', error)
+    return null
+  }
+},
 
   findSimilar: async (options: SimilarityQueryOptions): Promise<NotesSearchResults & { similarities: Record<string, number> }> => {
     const { referenceNoteId, titlesOnly, algorithm, threshold } = options
