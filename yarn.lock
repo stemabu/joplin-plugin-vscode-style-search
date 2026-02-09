@@ -6397,9 +6397,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"joplin-plugin-vscode-style-search@workspace:.":
+"joplin-plugin-vscode-style-search-medition@workspace:.":
   version: 0.0.0-use.local
-  resolution: "joplin-plugin-vscode-style-search@workspace:."
+  resolution: "joplin-plugin-vscode-style-search-medition@workspace:."
   dependencies:
     "@joplin/lib": "npm:~2.9"
     "@rspack/cli": "npm:^0.5.4"
