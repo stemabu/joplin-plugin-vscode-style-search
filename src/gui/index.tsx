@@ -377,11 +377,12 @@ function App() {
               onChange={(e) => setSortType(e.target.value as SortType)}
               className={selectClassname}
             >
-              <option value={SortType.Relevance}>Relevance</option>
-              <option value={SortType.Matches}>Matches</option>
-              <option value={SortType.NoteName}>Note Name</option>
-              <option value={SortType.FolderName}>Folder Name</option>
-              <option value={SortType.Updated}>Updated</option>
+              {mode === 'similarity' && <option value={SortType.Similarity}>Ähnlichkeit</option>}
+              <option value={SortType.Relevance}>Relevanz</option>
+              {mode === 'search' && <option value={SortType.Matches}>Treffer</option>}
+              <option value={SortType.NoteName}>Notizname</option>
+              <option value={SortType.FolderName}>Ordnername</option>
+              <option value={SortType.Updated}>Aktualisiert</option>
             </select>
             <select
               value={sortDirection}
@@ -389,21 +390,28 @@ function App() {
               disabled={sortType === SortType.Relevance}
               className={selectClassname}
             >
-              <option value={SortDirection.Ascending}>Ascending</option>
-              <option value={SortDirection.Descending}>Descending</option>
+              <option value={SortDirection.Ascending}>Aufsteigend</option>
+              <option value={SortDirection.Descending}>Absteigend</option>
             </select>
-            <FilterButton
-              active={false}
-              toggle={() => listData.setAllCollapsed()}
-              icon="collapse"
-              tooltip="Collapse All"
-            />
-            <FilterButton active={false} toggle={() => listData.resultsUpdated()} icon="expand" tooltip="Expand All" />
+            {mode === 'search' && (
+              <>
+                <FilterButton
+                  active={false}
+                  toggle={() => listData.setAllCollapsed()}
+                  icon="collapse"
+                  tooltip="Collapse All"
+                />
+                <FilterButton active={false} toggle={() => listData.resultsUpdated()} icon="expand" tooltip="Expand All" />
+              </>
+            )}
           </div>
         </div>
 
         <div className="mb-1">
-          {totalMatches} matches in {searchResults.notes.length} notes
+          {mode === 'search' 
+            ? `${totalMatches} Treffer in ${searchResults.notes.length} Notizen`
+            : `${searchResults?.notes.length ?? 0} ähnliche Notizen gefunden`
+          }
         </div>
 
         <div className="grow">
