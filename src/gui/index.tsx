@@ -72,7 +72,7 @@ enum SortDirection {
 type Mode = 'search' | 'similarity'
 type SimilarityAlgorithm = 'jaccard' | 'cosine' | 'dice' | 'minhash'
 
-// NEU: Default-Schwellwerte definieren
+// Default-Schwellwerte definieren
 const DEFAULT_THRESHOLDS = {
   jaccard: { title: 70, full: 30 },
   cosine: { title: 75, full: 40 },
@@ -103,9 +103,14 @@ function App() {
   const [similarityAlgorithm, setSimilarityAlgorithm] = useState<SimilarityAlgorithm>('jaccard')
   const [similarityThreshold, setSimilarityThreshold] = useState(30)
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)  // NEU
   const [similarities, setSimilarities] = useState<Record<string, number>>({})
   
-  // NEU: Schwellwerte für jeden Algorithmus
+  // NEU: Ordner-Limit-Modus
+  const [limitToFolders, setLimitToFolders] = useState(false)
+  const [additionalFolder, setAdditionalFolder] = useState<string>('')
+  
+  // Schwellwerte für jeden Algorithmus
   const [thresholds, setThresholds] = useState({
     jaccard_title: DEFAULT_THRESHOLDS.jaccard.title,
     jaccard_full: DEFAULT_THRESHOLDS.jaccard.full,
@@ -117,7 +122,7 @@ function App() {
     minhash_full: DEFAULT_THRESHOLDS.minhash.full,
   })
 
-  // NEU: Settings beim Start laden
+  // Settings beim Start laden
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -140,6 +145,12 @@ function App() {
         if (folder1) setTargetFolder1(folder1)
         if (folder2) setTargetFolder2(folder2)
         
+        // NEU: Ordner-Limit-Modus laden
+        const limitFolders = await client.stub.getSetting('limitToFolders')
+        const addFolder = await client.stub.getSetting('additionalFolder')
+        setLimitToFolders(limitFolders)
+        if (addFolder) setAdditionalFolder(addFolder)
+        
         // Aktuellen Schwellwert setzen
         const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof loadedThresholds
         setSimilarityThreshold(loadedThresholds[key])
@@ -155,7 +166,7 @@ function App() {
     loadSettings()
   }, [])
 
-  // NEU: Schwellwert aktualisieren bei Algorithmus-/Modus-Wechsel
+  // Schwellwert aktualisieren bei Algorithmus-/Modus-Wechsel
   useEffect(() => {
     const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof thresholds
     setSimilarityThreshold(thresholds[key])
@@ -206,8 +217,18 @@ function App() {
   // Beim Wechsel in Similarity-Mode die aktuelle Notiz-ID laden
   useEffect(() => {
     if (mode === 'similarity') {
-      client.stub.getCurrentNoteId().then(id => {
+      client.stub.getCurrentNoteId().then(async id => {
         setCurrentNoteId(id)
+        
+        // NEU: Auch die aktuelle Folder-ID laden
+        if (id) {
+          try {
+            const noteData = await joplin.data.get(['notes', id], { fields: ['parent_id'] })
+            setCurrentFolderId(noteData.parent_id)
+          } catch (error) {
+            console.error('Error loading note folder:', error)
+          }
+        }
       })
     }
   }, [mode])
@@ -219,6 +240,14 @@ function App() {
         const id = await client.stub.getCurrentNoteId()
         if (id !== currentNoteId) {
           setCurrentNoteId(id)
+          
+          // NEU: Auch Folder-ID aktualisieren
+          try {
+            const noteData = await joplin.data.get(['notes', id], { fields: ['parent_id'] })
+            setCurrentFolderId(noteData.parent_id)
+          } catch (error) {
+            console.error('Error loading note folder:', error)
+          }
         }
       }, 500) // Alle 500ms prüfen
       
@@ -242,7 +271,7 @@ function App() {
     })
   }
 
-  // NEU: Schwellwert speichern wenn geändert
+  // Schwellwert speichern wenn geändert
   const handleThresholdChange = async (newValue: number) => {
     setSimilarityThreshold(newValue)
     
@@ -253,7 +282,7 @@ function App() {
     await client.stub.setSetting(settingKey, newValue)
   }
 
-  // NEU: Auf Default zurücksetzen
+  // Auf Default zurücksetzen
   const handleResetThreshold = async () => {
     const mode = titlesOnly ? 'title' : 'full'
     const defaultValue = DEFAULT_THRESHOLDS[similarityAlgorithm][mode]
@@ -267,7 +296,7 @@ function App() {
     await client.stub.setSetting(settingKey, defaultValue)
   }
 
-  // NEU: Zielordner speichern
+  // Zielordner speichern
   const handleTargetFolder1Change = async (folderId: string) => {
     setTargetFolder1(folderId)
     await client.stub.setSetting('targetFolder1', folderId)
@@ -276,6 +305,17 @@ function App() {
   const handleTargetFolder2Change = async (folderId: string) => {
     setTargetFolder2(folderId)
     await client.stub.setSetting('targetFolder2', folderId)
+  }
+
+  // NEU: Ordner-Limit-Modus Handler
+  const handleLimitToFoldersChange = async (checked: boolean) => {
+    setLimitToFolders(checked)
+    await client.stub.setSetting('limitToFolders', checked)
+  }
+
+  const handleAdditionalFolderChange = async (folderId: string) => {
+    setAdditionalFolder(folderId)
+    await client.stub.setSetting('additionalFolder', folderId)
   }
 
   const handleExecuteMoves = async () => {
@@ -354,11 +394,21 @@ function App() {
     } else {
       // Similarity Mode
       if (currentNoteId) {
+        // NEU: Ordner-Filter vorbereiten
+        let folderFilter: string[] | undefined = undefined
+        if (limitToFolders && currentFolderId) {
+          folderFilter = [currentFolderId]
+          if (additionalFolder && additionalFolder !== currentFolderId) {
+            folderFilter.push(additionalFolder)
+          }
+        }
+        
         const similarityResult = await client.stub.findSimilar({
           referenceNoteId: currentNoteId,
           titlesOnly,
           algorithm: similarityAlgorithm,
-          threshold: similarityThreshold
+          threshold: similarityThreshold,
+          folderFilter  // NEU
         })
         
         notes = similarityResult.notes
@@ -390,7 +440,7 @@ function App() {
 
     setSimilarities(sims)
     return { notes, noteListData: [], parsedNotes, folders }
-  }, [mode, searchText, titlesOnly, currentNoteId, similarityAlgorithm, similarityThreshold])
+  }, [mode, searchText, titlesOnly, currentNoteId, similarityAlgorithm, similarityThreshold, limitToFolders, currentFolderId, additionalFolder])
 
   const parsedNoteResults = searchResults?.parsedNotes ?? NO_RESULTS
 
@@ -542,6 +592,7 @@ function App() {
             folder2Name={folder2Name}
             mode={mode}
             similarities={similarities}
+            additionalFolderName={limitToFolders && additionalFolder ? (allFolders.find(f => f.id === additionalFolder)?.title || '') : ''}
             status="resolved"
             openNote={async (id, line?: number) => {
               await client.stub.openNote(id, line)
@@ -625,6 +676,19 @@ function App() {
             {mode === 'search' ? 'Nur in Titeln suchen' : 'Nur Titel vergleichen (erste 10 Zeichen + Text zwischen – und ])'}
           </label>
           
+          {/* NEU: Ordner-Limit nur im Similarity-Modus */}
+          {mode === 'similarity' && (
+            <label className="flex items-center">
+              <input 
+                type="checkbox" 
+                checked={limitToFolders} 
+                onChange={(e) => handleLimitToFoldersChange(e.target.checked)} 
+                className="mr-1"
+              ></input>
+              Nur aktuelles + 1 Notizbuch
+            </label>
+          )}
+          
           <label className="flex items-center">
             <input type="checkbox" checked={moveMode} onChange={handleMoveModeChanged} className="mr-1"></input>
             Notiz(en) verschieben
@@ -677,8 +741,29 @@ function App() {
 
         {showConfig && (
           <div className="mb-2 p-3 border border-blue-300 rounded bg-blue-50 dark:bg-gray-800 dark:border-blue-700">
-            <h4 className="font-bold mb-2">Zielordner konfigurieren</h4>
+            <h4 className="font-bold mb-2">Konfiguration</h4>
             <div className="space-y-2">
+              {/* NEU: Zusätzlicher Ordner für Ähnlichkeitssuche */}
+              <div>
+                <label className="block text-sm mb-1 font-semibold">Zusätzliches Notizbuch für Ähnlichkeitssuche:</label>
+                <select
+                  value={additionalFolder}
+                  onChange={(e) => handleAdditionalFolderChange(e.target.value)}
+                  className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600"
+                >
+                  <option value="">-- Kein zusätzliches Notizbuch --</option>
+                  {allFolders.map(folder => (
+                    <option key={folder.id} value={folder.id}>{folder.title}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <hr className="my-3 border-gray-300 dark:border-gray-600" />
+              
+              <div>
+                <label className="block text-sm mb-1 font-semibold">Verschieben-Notizbücher:</label>
+              </div>
+              
               <div>
                 <label className="block text-sm mb-1">Mittlerer Radio-Button (Rot) → Verschieben nach:</label>
                 <select
