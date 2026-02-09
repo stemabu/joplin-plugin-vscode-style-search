@@ -441,7 +441,7 @@ function App() {
   const anyCollapsed = listData.getAnyCollapsed()
   const isSuccess = !!searchText && !loading
 
-  return (
+    return (
     <div className={searchStyles.SearchFiles}>
       <div className="flex justify-between items-center mb-2">
         <h1 className="text-lg font-bold">Joplin VS Code-style Search Plugin</h1>
@@ -496,6 +496,8 @@ function App() {
             </div>
           </div>
         )}
+        
+        <div className="mb-1 p-2 flex items-center gap-4">
           <label className="flex items-center">
             <input type="checkbox" checked={titlesOnly} onChange={handleTitlesOnlyChanged} className="mr-1"></input>
             {mode === 'search' ? 'Nur in Titeln suchen' : 'Nur Titel vergleichen (erste 10 Zeichen + Text zwischen – und ])'}
@@ -503,7 +505,7 @@ function App() {
           
           <label className="flex items-center">
             <input type="checkbox" checked={moveMode} onChange={handleMoveModeChanged} className="mr-1"></input>
-            Move Note(s)
+            Notiz(en) verschieben
           </label>
           
           {moveMode && (
@@ -511,7 +513,7 @@ function App() {
               <button
                 onClick={() => setShowConfig(!showConfig)}
                 className="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
-                title="Configure target folders"
+                title="Zielordner konfigurieren"
               >
                 ⚙️
               </button>
@@ -520,13 +522,12 @@ function App() {
                 disabled={isMoving}
                 className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm"
               >
-                {isMoving ? 'Moving...' : 'Execute Moves'}
+                {isMoving ? 'Verschiebe...' : 'Verschieben ausführen'}
               </button>
             </>
           )}
         </div>
 
-        {/* GEÄNDERT: Kompaktere Anzeige mit Hintergrund */}
         {moveMode && !showConfig && (
           <div className="px-2 pb-2 pt-0">
             {successMessage ? (
@@ -537,7 +538,7 @@ function App() {
               <div className="flex gap-3 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
                 <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
                   <span className="inline-block w-2 h-2 rounded-full bg-gray-500"></span>
-                  Remain
+                  Behalten
                 </span>
                 <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
                   <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
@@ -554,10 +555,10 @@ function App() {
 
         {showConfig && (
           <div className="mb-2 p-3 border border-blue-300 rounded bg-blue-50 dark:bg-gray-800 dark:border-blue-700">
-            <h4 className="font-bold mb-2">Configure Target Folders</h4>
+            <h4 className="font-bold mb-2">Zielordner konfigurieren</h4>
             <div className="space-y-2">
               <div>
-                <label className="block text-sm mb-1">Middle Radio Button (Red) → Move to:</label>
+                <label className="block text-sm mb-1">Mittlerer Radio-Button (Rot) → Verschieben nach:</label>
                 <select
                   value={targetFolder1}
                   onChange={(e) => setTargetFolder1(e.target.value)}
@@ -569,7 +570,7 @@ function App() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm mb-1">Right Radio Button (Blue) → Move to:</label>
+                <label className="block text-sm mb-1">Rechter Radio-Button (Blau) → Verschieben nach:</label>
                 <select
                   value={targetFolder2}
                   onChange={(e) => setTargetFolder2(e.target.value)}
@@ -584,7 +585,7 @@ function App() {
                 onClick={() => setShowConfig(false)}
                 className="mt-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
               >
-                Done
+                Fertig
               </button>
             </div>
           </div>
@@ -595,6 +596,3 @@ function App() {
     </div>
   )
 }
-
-const root = ReactDOM.createRoot(document.getElementById('root'))
-root.render(<App />)
