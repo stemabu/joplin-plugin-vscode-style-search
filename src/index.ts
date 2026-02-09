@@ -3,6 +3,8 @@ import { MenuItemLocation, ToolbarButtonLocation } from 'api/types'
 import type * as FSType from 'fs-extra'
 import { ChannelServer, PostMessageTarget } from './shared/channelRpc'
 import { RpcMethods } from './shared/rpcTypes'
+import { SettingItemType } from 'api/types'
+
 
 export interface SearchQueryOptions {
   searchText: string
@@ -185,7 +187,16 @@ const handler = {
   openNote: async (noteId: string, line?: number) => {
     await joplin.commands.execute('openNote', noteId)
   },
+    // NEU: Settings laden
+  getSetting: async (key: string): Promise<any> => {
+    return await joplin.settings.value(key)
+  },
   
+  // NEU: Settings speichern
+  setSetting: async (key: string, value: any): Promise<void> => {
+    await joplin.settings.setValue(key, value)
+  },
+	
   getTitleBeforeBracket: async (): Promise<string | null> => {
     try {
       const note = await joplin.workspace.selectedNote()
@@ -458,9 +469,92 @@ async function updateSelectionCounter(panel: string) {
   
   await joplin.views.panels.setHtml(panel, html)
 }
-
 joplin.plugins.register({
-  onStart: async function () {
+  onStart: async function() {
+    // Settings registrieren
+    await joplin.settings.registerSection('vscodeSearchSettings', {
+      label: 'VS Code Search & Similarity',
+      iconName: 'fas fa-search',
+    })
+
+    await joplin.settings.registerSettings({
+      // Schwellwerte für Jaccard
+      'threshold_jaccard_title': {
+        value: 70,
+        type: SettingItemType.Int,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'Jaccard Threshold (Title only)',
+      },
+      'threshold_jaccard_full': {
+        value: 30,
+        type: SettingItemType.Int,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'Jaccard Threshold (Full text)',
+      },
+      // Schwellwerte für Cosine
+      'threshold_cosine_title': {
+        value: 75,
+        type: SettingItemType.Int,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'Cosine Threshold (Title only)',
+      },
+      'threshold_cosine_full': {
+        value: 40,
+        type: SettingItemType.Int,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'Cosine Threshold (Full text)',
+      },
+      // Schwellwerte für Dice
+      'threshold_dice_title': {
+        value: 75,
+        type: SettingItemType.Int,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'Dice Threshold (Title only)',
+      },
+      'threshold_dice_full': {
+        value: 35,
+        type: SettingItemType.Int,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'Dice Threshold (Full text)',
+      },
+      // Schwellwerte für MinHash
+      'threshold_minhash_title': {
+        value: 80,
+        type: SettingItemType.Int,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'MinHash Threshold (Title only)',
+      },
+      'threshold_minhash_full': {
+        value: 50,
+        type: SettingItemType.Int,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'MinHash Threshold (Full text)',
+      },
+      // Zielordner
+      'targetFolder1': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'Target Folder 1 (Red)',
+      },
+      'targetFolder2': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'vscodeSearchSettings',
+        public: true,
+        label: 'Target Folder 2 (Blue)',
+      },
+    })
+
     const panel = await joplin.views.panels.create('panel_1')
     await joplin.views.panels.hide(panel)
     setUpSearchPanel(panel)
