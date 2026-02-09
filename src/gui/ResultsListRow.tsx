@@ -30,7 +30,6 @@ export type ItemData = {
   folder2Name: string
   mode: 'search' | 'similarity'  // NEU falls noch nicht da
   similarities: Record<string, number>  // NEU falls noch nicht da
-  additionalFolderName: string  // NEU
   openNote: (noteId: string, line?: number) => void
 }
 
@@ -46,7 +45,7 @@ export default function ResultsListItem({
   const { itemData, listData: genericListData } = data
   
   const listData = genericListData as NoteSearchListData
-  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, additionalFolderName } = itemData
+  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities } = itemData
   const { isCollapsed, result } = listData.getItemAtIndex(index)
 
   if (isNoteItem(result)) {
@@ -65,7 +64,6 @@ export default function ResultsListItem({
   folder2Name={folder2Name}
   mode={mode}  // NEU falls noch nicht da
   similarities={similarities}  // NEU falls noch nicht da
-  additionalFolderName={additionalFolderName}  // NEU
   style={style}
   openNote={openNote}
 />
@@ -91,7 +89,6 @@ function LocationRow({
   folder2Name,
   mode,  // NEU falls noch nicht da
   similarities,  // NEU falls noch nicht da
-  additionalFolderName,  // NEU
   style,
   openNote,
 }: {
@@ -108,7 +105,6 @@ function LocationRow({
   folder2Name: string
   mode: 'search' | 'similarity'  // NEU falls noch nicht da
   similarities: Record<string, number>  // NEU falls noch nicht da
-  additionalFolderName: string  // NEU
   style: CSSProperties
   openNote: (noteId: string, line?: number) => void
 }) {
