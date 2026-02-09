@@ -223,8 +223,8 @@ function App() {
         // NEU: Auch die aktuelle Folder-ID laden
         if (id) {
           try {
-            const noteData = await joplin.data.get(['notes', id], { fields: ['parent_id'] })
-            setCurrentFolderId(noteData.parent_id)
+            const noteData = await await client.stub.getCurrentNoteFolderId()
+            setCurrentFolderId(folderId)
           } catch (error) {
             console.error('Error loading note folder:', error)
           }
@@ -243,8 +243,8 @@ function App() {
           
           // NEU: Auch Folder-ID aktualisieren
           try {
-            const noteData = await joplin.data.get(['notes', id], { fields: ['parent_id'] })
-            setCurrentFolderId(noteData.parent_id)
+            const noteData = await client.stub.getCurrentNoteFolderId()
+            setCurrentFolderId(folderId)
           } catch (error) {
             console.error('Error loading note folder:', error)
           }
@@ -615,7 +615,7 @@ function App() {
           className="px-3 py-1 bg-cyan-500 text-white rounded hover:bg-cyan-600 text-sm"
           title="Zwischen Suche und Ähnlichkeit wechseln (F4)"
         >
-          {mode === 'search' ? 'Suche' : 'Ähnlichkeit'}
+          {mode === 'search' ? 'Modus: Suche' : 'Modus: Ähnlichkeit'}
         </button>
       </div>
       
@@ -743,15 +743,15 @@ function App() {
           <div className="mb-2 p-3 border border-blue-300 rounded bg-blue-50 dark:bg-gray-800 dark:border-blue-700">
             <h4 className="font-bold mb-2">Konfiguration</h4>
             <div className="space-y-2">
-              {/* NEU: Zusätzlicher Ordner für Ähnlichkeitssuche */}
+              {/* NEU: Ordner für Ähnlichkeitssuche */}
               <div>
-                <label className="block text-sm mb-1 font-semibold">Zusätzliches Notizbuch für Ähnlichkeitssuche:</label>
+                <label className="block text-sm mb-1 font-semibold">Notizbuch für Ähnlichkeitssuche:</label>
                 <select
                   value={additionalFolder}
                   onChange={(e) => handleAdditionalFolderChange(e.target.value)}
                   className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600"
                 >
-                  <option value="">-- Kein zusätzliches Notizbuch --</option>
+                  <option value="">-- Kein Notizbuch ausgewählt --</option>
                   {allFolders.map(folder => (
                     <option key={folder.id} value={folder.id}>{folder.title}</option>
                   ))}
