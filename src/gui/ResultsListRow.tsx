@@ -136,28 +136,28 @@ function LocationRow({
     return `w-4 h-4 rounded-full border-2 ${isSelected ? 'border-gray-700' : 'border-gray-400'} ${colors[color]} cursor-pointer hover:opacity-80 transition-opacity`
   }
 
-  const noteHeaderContent = (
-    <>
-      {moveMode && (
-        <div className="flex gap-1 mr-2" onClick={(e) => e.stopPropagation()}>
-          <div
-            className={radioButtonStyle(currentMovement === 'none', 'gray')}
-            onClick={() => onNoteMovementChange(id, 'none')}
-            title="Keep in current folder"
-          />
-          <div
-            className={radioButtonStyle(currentMovement === 'folder1', 'red')}
-            onClick={() => onNoteMovementChange(id, 'folder1')}
-            title={`Move to: ${folder1Name}`}
-          />
-          <div
-            className={radioButtonStyle(currentMovement === 'folder2', 'blue')}
-            onClick={() => onNoteMovementChange(id, 'folder2')}
-            title={`Move to: ${folder2Name}`}
-          />
-        </div>
-      )}
-      
+const noteHeaderContent = (
+  <>
+    {moveMode && (
+      <div className="flex gap-1 mr-2" onClick={(e) => e.stopPropagation()}>
+        <div
+          className={radioButtonStyle(currentMovement === 'none', 'gray')}
+          onClick={() => onNoteMovementChange(id, 'none')}
+          title="Keep in current folder"
+        />
+        <div
+          className={radioButtonStyle(currentMovement === 'folder1', 'red')}
+          onClick={() => onNoteMovementChange(id, 'folder1')}
+          title={`Move to: ${folder1Name}`}
+        />
+        <div
+          className={radioButtonStyle(currentMovement === 'folder2', 'blue')}
+          onClick={() => onNoteMovementChange(id, 'folder2')}
+          title={`Move to: ${folder2Name}`}
+        />
+      </div>
+    )}
+    
     <Icon className={styles.LocationIcon} type="file" />
     <span className={styles.Location} onClick={handleOpenNoteClicked} title={title}>
       {title}
@@ -169,15 +169,26 @@ function LocationRow({
         {similarities[id].toFixed(0)}%
       </span>
     )}
-      </div>
-      {titlesOnly ? null : (
-        <div className={styles.Count}>({matchCount === 1 ? '1 match' : `${matchCount} matches`})</div>
-      )}
+    
+    {titlesOnly ? null : (
+      <div className={styles.Count}>({matchCount === 1 ? '1 match' : `${matchCount} matches`})</div>
+    )}
+    
+    {/* Ordner-Anzeige */}
+    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+      {parentFolderTitle}
+    </span>
+    
+    {/* NEU: Zusätzliches Notizbuch ganz rechts */}
+    {additionalFolderName && (
+      <span className="text-xs text-purple-600 dark:text-purple-400 ml-2 italic font-semibold">
+        +{additionalFolderName}
+      </span>
+    )}
 
-      <Icon className={styles.LocationIcon} type="open" title="Open Note" onClick={handleOpenNoteClicked} />
-    </>
-  )
-
+    <Icon className={styles.LocationIcon} type="open" title="Open Note" onClick={handleOpenNoteClicked} />
+  </>
+)
   let rowContent = (
     <span className="inline-block">
       <span className={styles.LocationRow} onClick={handleOpenNoteClicked}>
