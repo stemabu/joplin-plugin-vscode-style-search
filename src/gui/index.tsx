@@ -409,7 +409,7 @@ function App() {
 
         <div className="mb-1">
           {mode === 'search' 
-            ? `${totalMatches} Treffer in ${searchResults.notes.length} Notizen`
+            ? `${totalMatches} Treffer in ${searchResults?.notes.length ?? 0} Notizen`
             : `${searchResults?.notes.length ?? 0} ähnliche Notizen gefunden`
           }
         </div>
@@ -418,7 +418,7 @@ function App() {
           <ResultsList
             query={searchText}
             results={results}
-            folders={searchResults.folders}
+            folders={searchResults?.folders ?? []}
             listData={listData}
             titlesOnly={titlesOnly}
             moveMode={moveMode}
