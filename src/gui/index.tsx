@@ -70,7 +70,7 @@ enum SortDirection {
 }
 
 type Mode = 'search' | 'similarity'
-type SimilarityAlgorithm = 'jaccard' | 'cosine' | 'dice'
+type SimilarityAlgorithm = 'jaccard' | 'cosine' | 'dice' | 'minhash'
 
 function App() {
   const [mode, setMode] = useState<Mode>('search')
@@ -480,6 +480,7 @@ function App() {
                 <option value="jaccard">Jaccard (Wort-Überlappung)</option>
                 <option value="cosine">Cosine (TF-IDF)</option>
                 <option value="dice">Dice Koeffizient</option>
+                <option value="minhash">MinHash (Duplikate)</option>
               </select>
             </div>
             
