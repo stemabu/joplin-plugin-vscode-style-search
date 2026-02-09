@@ -426,6 +426,8 @@ function App() {
             onNoteMovementChange={handleNoteMovementChange}
             folder1Name={folder1Name}
             folder2Name={folder2Name}
+            mode={mode}
+            similarities={similarities}
             status="resolved"
             openNote={async (id, line?: number) => {
               await client.stub.openNote(id, line)
@@ -441,22 +443,62 @@ function App() {
 
   return (
     <div className={searchStyles.SearchFiles}>
-      <h1 className="mb-2 text-lg font-bold">Joplin VS Code-style Search Plugin</h1>
+      <div className="flex justify-between items-center mb-2">
+        <h1 className="text-lg font-bold">Joplin VS Code-style Search Plugin</h1>
+        <button
+          onClick={() => setMode(prev => prev === 'search' ? 'similarity' : 'search')}
+          className="px-3 py-1 bg-cyan-500 text-white rounded hover:bg-cyan-600 text-sm"
+          title="Zwischen Suche und Ähnlichkeit wechseln (F4)"
+        >
+          {mode === 'search' ? '🔍 Suche' : '⚖️ Ähnlichkeit'}
+        </button>
+      </div>
+      
       <div className="border rounded-sm border-gray-200 m-1 p-1">
-        <div className={classnames(searchStyles.InputWrapper, 'mb-2')}>
-          <input
-            type="text"
-            className={classnames(searchStyles.Input, 'px-1')}
-            onChange={handleChange}
-            value={searchText}
-            placeholder="Enter text to search for"
-            ref={inputRef}
-          />
-        </div>
-        <div className="mb-1 p-2 flex items-center gap-4">
+        {mode === 'search' && (
+          <div className={classnames(searchStyles.InputWrapper, 'mb-2')}>
+            <input
+              type="text"
+              className={classnames(searchStyles.Input, 'px-1')}
+              onChange={handleChange}
+              value={searchText}
+              placeholder="Suchbegriff eingeben"
+              ref={inputRef}
+            />
+          </div>
+        )}
+        
+        {mode === 'similarity' && (
+          <div className="mb-2 p-2 bg-cyan-50 dark:bg-cyan-900 dark:bg-opacity-20 rounded">
+            <div className="flex gap-4 items-center mb-2">
+              <label className="text-sm font-semibold">Algorithmus:</label>
+              <select
+                value={similarityAlgorithm}
+                onChange={(e) => setSimilarityAlgorithm(e.target.value as SimilarityAlgorithm)}
+                className="px-2 py-1 border rounded text-sm dark:bg-gray-700 dark:border-gray-600"
+              >
+                <option value="jaccard">Jaccard (Wort-Überlappung)</option>
+                <option value="cosine">Cosine (TF-IDF)</option>
+                <option value="dice">Dice Koeffizient</option>
+              </select>
+            </div>
+            
+            <div className="flex gap-4 items-center">
+              <label className="text-sm font-semibold">Schwellwert: {similarityThreshold}%</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={similarityThreshold}
+                onChange={(e) => setSimilarityThreshold(Number(e.target.value))}
+                className="flex-grow"
+              />
+            </div>
+          </div>
+        )}
           <label className="flex items-center">
             <input type="checkbox" checked={titlesOnly} onChange={handleTitlesOnlyChanged} className="mr-1"></input>
-            Search in titles only
+            {mode === 'search' ? 'Nur in Titeln suchen' : 'Nur Titel vergleichen (erste 10 Zeichen + Text zwischen – und ])'}
           </label>
           
           <label className="flex items-center">
