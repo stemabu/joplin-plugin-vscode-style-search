@@ -139,14 +139,28 @@ function App() {
     }
   }, [])
 
-  // NEU: Beim Wechsel in Similarity-Mode die aktuelle Notiz-ID laden
-  useEffect(() => {
-    if (mode === 'similarity') {
-      client.stub.getCurrentNoteId().then(id => {
+ // NEU: Beim Wechsel in Similarity-Mode die aktuelle Notiz-ID laden
+useEffect(() => {
+  if (mode === 'similarity') {
+    client.stub.getCurrentNoteId().then(id => {
+      setCurrentNoteId(id)
+    })
+  }
+}, [mode])
+
+// NEU: Bei Notizwechsel im Similarity-Mode aktualisieren
+useEffect(() => {
+  if (mode === 'similarity') {
+    const intervalId = setInterval(async () => {
+      const id = await client.stub.getCurrentNoteId()
+      if (id !== currentNoteId) {
         setCurrentNoteId(id)
-      })
-    }
-  }, [mode])
+      }
+    }, 500) // Alle 500ms prüfen
+    
+    return () => clearInterval(intervalId)
+  }
+}, [mode, currentNoteId])
   
   const handleMoveModeChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { checked } = e.target
@@ -372,18 +386,18 @@ function App() {
             {mode === 'search' ? 'Ergebnisse' : 'Ähnliche Notizen'}
           </h3>
           <div className="flex">
-            <select
-              value={sortType}
-              onChange={(e) => setSortType(e.target.value as SortType)}
-              className={selectClassname}
-            >
-              {mode === 'similarity' && <option value={SortType.Similarity}>Ähnlichkeit</option>}
-              <option value={SortType.Relevance}>Relevanz</option>
-              {mode === 'search' && <option value={SortType.Matches}>Treffer</option>}
-              <option value={SortType.NoteName}>Notizname</option>
-              <option value={SortType.FolderName}>Ordnername</option>
-              <option value={SortType.Updated}>Aktualisiert</option>
-            </select>
+          <select
+            value={sortType}
+            onChange={(e) => setSortType(e.target.value as SortType)}
+            className={selectClassname}
+          >
+          {mode === 'similarity' && <option value={SortType.Similarity}>Ähnlichkeit</option>}
+          {mode === 'search' && <option value={SortType.Relevance}>Relevanz</option>}
+          {mode === 'search' && <option value={SortType.Matches}>Treffer</option>}
+          <option value={SortType.NoteName}>Notizname</option>
+          <option value={SortType.FolderName}>Ordnername</option>
+          <option value={SortType.Updated}>Aktualisiert</option>
+          </select>
             <select
               value={sortDirection}
               onChange={(e) => setSortDirection(e.target.value as SortDirection)}
