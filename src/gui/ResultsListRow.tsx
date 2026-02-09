@@ -28,6 +28,9 @@ export type ItemData = {
   onNoteMovementChange: (noteId: string, target: 'none' | 'folder1' | 'folder2') => void
   folder1Name: string
   folder2Name: string
+  mode: 'search' | 'similarity'  // NEU falls noch nicht da
+  similarities: Record<string, number>  // NEU falls noch nicht da
+  additionalFolderName: string  // NEU
   openNote: (noteId: string, line?: number) => void
 }
 
@@ -41,28 +44,31 @@ export default function ResultsListItem({
   style: CSSProperties
 }) {
   const { itemData, listData: genericListData } = data
-
+  
   const listData = genericListData as NoteSearchListData
-  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name } = itemData
+  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, additionalFolderName } = itemData
   const { isCollapsed, result } = listData.getItemAtIndex(index)
 
   if (isNoteItem(result)) {
     return (
-      <LocationRow
-        index={index}
-        isCollapsed={isCollapsed}
-        listData={listData}
-        titlesOnly={titlesOnly}
-        result={result}
-        folders={folders}
-        moveMode={moveMode}
-        noteMovements={noteMovements}
-        onNoteMovementChange={onNoteMovementChange}
-        folder1Name={folder1Name}
-        folder2Name={folder2Name}
-        style={style}
-        openNote={openNote}
-      />
+<LocationRow
+  index={index}
+  isCollapsed={isCollapsed}
+  listData={listData}
+  titlesOnly={titlesOnly}
+  result={result}
+  folders={folders}
+  moveMode={moveMode}
+  noteMovements={noteMovements}
+  onNoteMovementChange={onNoteMovementChange}
+  folder1Name={folder1Name}
+  folder2Name={folder2Name}
+  mode={mode}  // NEU falls noch nicht da
+  similarities={similarities}  // NEU falls noch nicht da
+  additionalFolderName={additionalFolderName}  // NEU
+  style={style}
+  openNote={openNote}
+/>
     )
   } else if (isFragmentItem(result)) {
     return <MatchRow query={itemData.query} result={result} style={style} openNote={openNote} />
@@ -83,6 +89,9 @@ function LocationRow({
   onNoteMovementChange,
   folder1Name,
   folder2Name,
+  mode,  // NEU falls noch nicht da
+  similarities,  // NEU falls noch nicht da
+  additionalFolderName,  // NEU
   style,
   openNote,
 }: {
@@ -97,6 +106,9 @@ function LocationRow({
   onNoteMovementChange: (noteId: string, target: 'none' | 'folder1' | 'folder2') => void
   folder1Name: string
   folder2Name: string
+  mode: 'search' | 'similarity'  // NEU falls noch nicht da
+  similarities: Record<string, number>  // NEU falls noch nicht da
+  additionalFolderName: string  // NEU
   style: CSSProperties
   openNote: (noteId: string, line?: number) => void
 }) {
@@ -146,10 +158,17 @@ function LocationRow({
         </div>
       )}
       
-      <Icon className={styles.LocationIcon} type="file" />
-      <div className={styles.Location} title={title}>
-        {parentFolderTitle ? `${parentFolderTitle} > ` : null}
-        {title}
+    <Icon className={styles.LocationIcon} type="file" />
+    <span className={styles.Location} onClick={handleOpenNoteClicked} title={title}>
+      {title}
+    </span>
+    
+    {/* NEU: Ähnlichkeitsprozentsatz im Similarity-Mode */}
+    {mode === 'similarity' && similarities[id] !== undefined && (
+      <span className="text-xs text-orange-600 dark:text-orange-400 font-semibold ml-2">
+        {similarities[id].toFixed(0)}%
+      </span>
+    )}
       </div>
       {titlesOnly ? null : (
         <div className={styles.Count}>({matchCount === 1 ? '1 match' : `${matchCount} matches`})</div>
