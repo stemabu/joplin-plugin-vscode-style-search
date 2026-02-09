@@ -143,17 +143,17 @@ const noteHeaderContent = (
         <div
           className={radioButtonStyle(currentMovement === 'none', 'gray')}
           onClick={() => onNoteMovementChange(id, 'none')}
-          title="Keep in current folder"
+          title="Notizbuch beibehalten"
         />
         <div
           className={radioButtonStyle(currentMovement === 'folder1', 'red')}
           onClick={() => onNoteMovementChange(id, 'folder1')}
-          title={`Move to: ${folder1Name}`}
+          title={`Verschieben zu: ${folder1Name}`}
         />
         <div
           className={radioButtonStyle(currentMovement === 'folder2', 'blue')}
           onClick={() => onNoteMovementChange(id, 'folder2')}
-          title={`Move to: ${folder2Name}`}
+          title={`Verchieben zu: ${folder2Name}`}
         />
       </div>
     )}
