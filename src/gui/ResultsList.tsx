@@ -22,6 +22,7 @@ interface ResultsListProps {
   folder2Name: string
   mode: 'search' | 'similarity'
   similarities: Record<string, number>
+  additionalFolderName: string  // NEU
   status: 'initial' | 'loading' | 'resolved'
   openNote: (id: string, line?: number) => void
 }
@@ -40,27 +41,29 @@ export default function ResultsList({
   folder2Name,
   mode,
   similarities,
+  additionalFolderName,  // NEU
   openNote,
 }: ResultsListProps) {
   const isPending = status === STATUS_PENDING
 
-  const itemData = useMemo<ItemData>(() => {
-    return {
-      listData,
-      query,
-      results,
-      folders,
-      titlesOnly,
-      moveMode,
-      noteMovements,
-      onNoteMovementChange,
-      folder1Name,
-      folder2Name,
-      mode,
-      similarities,
-      openNote,
-    }
-  }, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, openNote])
+ const itemData = useMemo<ItemData>(() => {
+  return {
+    listData,
+    query,
+    results,
+    folders,
+    titlesOnly,
+    moveMode,
+    noteMovements,
+    onNoteMovementChange,
+    folder1Name,
+    folder2Name,
+    mode,
+    similarities,
+    additionalFolderName,  // NEU
+    openNote,
+  }
+}, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, additionalFolderName, openNote])
 
   if (status === STATUS_RESOLVED && results.length === 0) {
     return <div>No results found somehow!</div>
