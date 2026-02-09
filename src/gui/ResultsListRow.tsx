@@ -179,13 +179,6 @@ const noteHeaderContent = (
       {parentFolderTitle}
     </span>
     
-    {/* NEU: Zusätzliches Notizbuch ganz rechts */}
-    {additionalFolderName && (
-      <span className="text-xs text-purple-600 dark:text-purple-400 ml-2 italic font-semibold">
-        +{additionalFolderName}
-      </span>
-    )}
-
     <Icon className={styles.LocationIcon} type="open" title="Open Note" onClick={handleOpenNoteClicked} />
   </>
 )
