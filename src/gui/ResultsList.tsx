@@ -22,7 +22,6 @@ interface ResultsListProps {
   folder2Name: string
   mode: 'search' | 'similarity'
   similarities: Record<string, number>
-  additionalFolderName: string  // NEU
   status: 'initial' | 'loading' | 'resolved'
   openNote: (id: string, line?: number) => void
 }
@@ -41,7 +40,6 @@ export default function ResultsList({
   folder2Name,
   mode,
   similarities,
-  additionalFolderName,  // NEU
   openNote,
 }: ResultsListProps) {
   const isPending = status === STATUS_PENDING
@@ -60,7 +58,6 @@ export default function ResultsList({
     folder2Name,
     mode,
     similarities,
-    additionalFolderName,  // NEU
     openNote,
   }
 }, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, additionalFolderName, openNote])
