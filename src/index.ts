@@ -113,7 +113,10 @@ function cosineSimilarity(text1: string, text2: string): number {
 }
 
 // NEU: MinHash-Implementierung
-function generateShingles(text: string, k: number = 3): Set<string> {
+const MINHASH_SHINGLE_SIZE = 3
+const MINHASH_NUM_HASHES = 100
+
+function generateShingles(text: string, k: number = MINHASH_SHINGLE_SIZE): Set<string> {
   const words = tokenize(text)
   const shingles = new Set<string>()
   
@@ -129,12 +132,12 @@ function simpleHash(str: string, seed: number): number {
   let hash = seed
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash) + str.charCodeAt(i)
-    hash = hash & hash // Convert to 32-bit integer
+    hash = hash | 0 // Convert to 32-bit integer
   }
   return Math.abs(hash)
 }
 
-function createMinHashSignature(shingles: Set<string>, numHashes: number = 100): number[] {
+function createMinHashSignature(shingles: Set<string>, numHashes: number = MINHASH_NUM_HASHES): number[] {
   const signature: number[] = new Array(numHashes).fill(Infinity)
   
   for (const shingle of shingles) {
@@ -148,13 +151,13 @@ function createMinHashSignature(shingles: Set<string>, numHashes: number = 100):
 }
 
 function minHashSimilarity(text1: string, text2: string): number {
-  const shingles1 = generateShingles(text1, 3)
-  const shingles2 = generateShingles(text2, 3)
+  const shingles1 = generateShingles(text1, MINHASH_SHINGLE_SIZE)
+  const shingles2 = generateShingles(text2, MINHASH_SHINGLE_SIZE)
   
   if (shingles1.size === 0 || shingles2.size === 0) return 0
   
-  const signature1 = createMinHashSignature(shingles1, 100)
-  const signature2 = createMinHashSignature(shingles2, 100)
+  const signature1 = createMinHashSignature(shingles1, MINHASH_NUM_HASHES)
+  const signature2 = createMinHashSignature(shingles2, MINHASH_NUM_HASHES)
   
   let matches = 0
   for (let i = 0; i < signature1.length; i++) {
