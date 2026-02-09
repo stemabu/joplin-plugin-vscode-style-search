@@ -166,6 +166,22 @@ function App() {
     loadSettings()
   }, [])
 
+// NEU: Ordner laden wenn Config-Dialog geöffnet wird
+useEffect(() => {
+  const loadFolders = async () => {
+    if (showConfig) {
+      try {
+        const folders = await client.stub.getAllFolders()
+        setAllFolders(folders)
+      } catch (error) {
+        console.error('Error loading folders:', error)
+      }
+    }
+  }
+  
+  loadFolders()
+}, [showConfig])
+  
   // Schwellwert aktualisieren bei Algorithmus-/Modus-Wechsel
   useEffect(() => {
     const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof thresholds
