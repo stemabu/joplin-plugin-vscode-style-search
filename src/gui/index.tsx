@@ -72,6 +72,14 @@ enum SortDirection {
 type Mode = 'search' | 'similarity'
 type SimilarityAlgorithm = 'jaccard' | 'cosine' | 'dice' | 'minhash'
 
+// NEU: Default-Schwellwerte definieren
+const DEFAULT_THRESHOLDS = {
+  jaccard: { title: 70, full: 30 },
+  cosine: { title: 75, full: 40 },
+  dice: { title: 75, full: 35 },
+  minhash: { title: 80, full: 50 },
+}
+
 function App() {
   const [mode, setMode] = useState<Mode>('search')
   
@@ -91,13 +99,69 @@ function App() {
 
   const [successMessage, setSuccessMessage] = useState<string>('')
   
-  // NEU: Ähnlichkeits-States
+  // Ähnlichkeits-States
   const [similarityAlgorithm, setSimilarityAlgorithm] = useState<SimilarityAlgorithm>('jaccard')
   const [similarityThreshold, setSimilarityThreshold] = useState(30)
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
   const [similarities, setSimilarities] = useState<Record<string, number>>({})
   
-    useEffect(() => {
+  // NEU: Schwellwerte für jeden Algorithmus
+  const [thresholds, setThresholds] = useState({
+    jaccard_title: DEFAULT_THRESHOLDS.jaccard.title,
+    jaccard_full: DEFAULT_THRESHOLDS.jaccard.full,
+    cosine_title: DEFAULT_THRESHOLDS.cosine.title,
+    cosine_full: DEFAULT_THRESHOLDS.cosine.full,
+    dice_title: DEFAULT_THRESHOLDS.dice.title,
+    dice_full: DEFAULT_THRESHOLDS.dice.full,
+    minhash_title: DEFAULT_THRESHOLDS.minhash.title,
+    minhash_full: DEFAULT_THRESHOLDS.minhash.full,
+  })
+
+  // NEU: Settings beim Start laden
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        // Schwellwerte laden
+        const loadedThresholds = {
+          jaccard_title: await client.stub.getSetting('threshold_jaccard_title'),
+          jaccard_full: await client.stub.getSetting('threshold_jaccard_full'),
+          cosine_title: await client.stub.getSetting('threshold_cosine_title'),
+          cosine_full: await client.stub.getSetting('threshold_cosine_full'),
+          dice_title: await client.stub.getSetting('threshold_dice_title'),
+          dice_full: await client.stub.getSetting('threshold_dice_full'),
+          minhash_title: await client.stub.getSetting('threshold_minhash_title'),
+          minhash_full: await client.stub.getSetting('threshold_minhash_full'),
+        }
+        setThresholds(loadedThresholds)
+        
+        // Zielordner laden
+        const folder1 = await client.stub.getSetting('targetFolder1')
+        const folder2 = await client.stub.getSetting('targetFolder2')
+        if (folder1) setTargetFolder1(folder1)
+        if (folder2) setTargetFolder2(folder2)
+        
+        // Aktuellen Schwellwert setzen
+        const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof loadedThresholds
+        setSimilarityThreshold(loadedThresholds[key])
+        
+        // Alle Ordner laden
+        const folders = await client.stub.getAllFolders()
+        setAllFolders(folders)
+      } catch (error) {
+        console.error('Error loading settings:', error)
+      }
+    }
+    
+    loadSettings()
+  }, [])
+
+  // NEU: Schwellwert aktualisieren bei Algorithmus-/Modus-Wechsel
+  useEffect(() => {
+    const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof thresholds
+    setSimilarityThreshold(thresholds[key])
+  }, [similarityAlgorithm, titlesOnly, thresholds])
+
+  useEffect(() => {
     commandMessageHandler = async (msg: any) => {
       console.log('Received command message:', msg)
 
@@ -139,28 +203,28 @@ function App() {
     }
   }, [])
 
- // NEU: Beim Wechsel in Similarity-Mode die aktuelle Notiz-ID laden
-useEffect(() => {
-  if (mode === 'similarity') {
-    client.stub.getCurrentNoteId().then(id => {
-      setCurrentNoteId(id)
-    })
-  }
-}, [mode])
-
-// NEU: Bei Notizwechsel im Similarity-Mode aktualisieren
-useEffect(() => {
-  if (mode === 'similarity') {
-    const intervalId = setInterval(async () => {
-      const id = await client.stub.getCurrentNoteId()
-      if (id !== currentNoteId) {
+  // Beim Wechsel in Similarity-Mode die aktuelle Notiz-ID laden
+  useEffect(() => {
+    if (mode === 'similarity') {
+      client.stub.getCurrentNoteId().then(id => {
         setCurrentNoteId(id)
-      }
-    }, 500) // Alle 500ms prüfen
-    
-    return () => clearInterval(intervalId)
-  }
-}, [mode, currentNoteId])
+      })
+    }
+  }, [mode])
+
+  // Bei Notizwechsel im Similarity-Mode aktualisieren
+  useEffect(() => {
+    if (mode === 'similarity') {
+      const intervalId = setInterval(async () => {
+        const id = await client.stub.getCurrentNoteId()
+        if (id !== currentNoteId) {
+          setCurrentNoteId(id)
+        }
+      }, 500) // Alle 500ms prüfen
+      
+      return () => clearInterval(intervalId)
+    }
+  }, [mode, currentNoteId])
   
   const handleMoveModeChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { checked } = e.target
@@ -176,6 +240,42 @@ useEffect(() => {
       newMap.set(noteId, target)
       return newMap
     })
+  }
+
+  // NEU: Schwellwert speichern wenn geändert
+  const handleThresholdChange = async (newValue: number) => {
+    setSimilarityThreshold(newValue)
+    
+    const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}`
+    const settingKey = `threshold_${key}`
+    
+    setThresholds(prev => ({ ...prev, [key]: newValue }))
+    await client.stub.setSetting(settingKey, newValue)
+  }
+
+  // NEU: Auf Default zurücksetzen
+  const handleResetThreshold = async () => {
+    const mode = titlesOnly ? 'title' : 'full'
+    const defaultValue = DEFAULT_THRESHOLDS[similarityAlgorithm][mode]
+    
+    setSimilarityThreshold(defaultValue)
+    
+    const key = `${similarityAlgorithm}_${mode}`
+    const settingKey = `threshold_${key}`
+    
+    setThresholds(prev => ({ ...prev, [key]: defaultValue }))
+    await client.stub.setSetting(settingKey, defaultValue)
+  }
+
+  // NEU: Zielordner speichern
+  const handleTargetFolder1Change = async (folderId: string) => {
+    setTargetFolder1(folderId)
+    await client.stub.setSetting('targetFolder1', folderId)
+  }
+
+  const handleTargetFolder2Change = async (folderId: string) => {
+    setTargetFolder2(folderId)
+    await client.stub.setSetting('targetFolder2', folderId)
   }
 
   const handleExecuteMoves = async () => {
@@ -498,16 +598,23 @@ useEffect(() => {
               </select>
             </div>
             
-            <div className="flex gap-4 items-center">
-              <label className="text-sm font-semibold">Schwellwert: {similarityThreshold}%</label>
+            <div className="flex gap-2 items-center">
+              <label className="text-sm font-semibold whitespace-nowrap">Schwellwert: {similarityThreshold}%</label>
               <input
                 type="range"
                 min="0"
                 max="100"
                 value={similarityThreshold}
-                onChange={(e) => setSimilarityThreshold(Number(e.target.value))}
+                onChange={(e) => handleThresholdChange(Number(e.target.value))}
                 className="flex-grow"
               />
+              <button
+                onClick={handleResetThreshold}
+                className="px-2 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 text-xs whitespace-nowrap"
+                title="Auf Standard zurücksetzen"
+              >
+                ↻ Default
+              </button>
             </div>
           </div>
         )}
@@ -576,7 +683,7 @@ useEffect(() => {
                 <label className="block text-sm mb-1">Mittlerer Radio-Button (Rot) → Verschieben nach:</label>
                 <select
                   value={targetFolder1}
-                  onChange={(e) => setTargetFolder1(e.target.value)}
+                  onChange={(e) => handleTargetFolder1Change(e.target.value)}
                   className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600"
                 >
                   {allFolders.map(folder => (
@@ -588,7 +695,7 @@ useEffect(() => {
                 <label className="block text-sm mb-1">Rechter Radio-Button (Blau) → Verschieben nach:</label>
                 <select
                   value={targetFolder2}
-                  onChange={(e) => setTargetFolder2(e.target.value)}
+                  onChange={(e) => handleTargetFolder2Change(e.target.value)}
                   className="w-full px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600"
                 >
                   {allFolders.map(folder => (
