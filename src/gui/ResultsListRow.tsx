@@ -170,9 +170,9 @@ const noteHeaderContent = (
       </span>
     )}
     
-    {titlesOnly ? null : (
-      <div className={styles.Count}>({matchCount === 1 ? '1 match' : `${matchCount} matches`})</div>
-    )}
+{!titlesOnly && mode === 'search' && (
+  <div className={styles.Count}>({matchCount === 1 ? '1 match' : `${matchCount} matches`})</div>
+)}
     
     {/* Ordner-Anzeige */}
     <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
