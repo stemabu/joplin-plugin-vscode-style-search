@@ -11,7 +11,6 @@ import { Folder } from 'src'
 
 interface ResultsListProps {
   query: string
-  status: 'pending' | 'resolved'
   results: NoteSearchItemData[]
   folders: Folder[]
   listData: NoteSearchListData
@@ -19,9 +18,12 @@ interface ResultsListProps {
   moveMode: boolean
   noteMovements: Map<string, 'none' | 'folder1' | 'folder2'>
   onNoteMovementChange: (noteId: string, target: 'none' | 'folder1' | 'folder2') => void
-  folder1Name: string  // NEU
-  folder2Name: string  // NEU
-  openNote: (noteId: string, line?: number) => void
+  folder1Name: string
+  folder2Name: string
+  mode: 'search' | 'similarity'
+  similarities: Record<string, number>
+  status: 'initial' | 'loading' | 'resolved'
+  openNote: (id: string, line?: number) => void
 }
 
 export default function ResultsList({
