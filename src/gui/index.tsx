@@ -239,7 +239,7 @@ useEffect(() => {
         // NEU: Auch die aktuelle Folder-ID laden
         if (id) {
           try {
-            const noteData = await await client.stub.getCurrentNoteFolderId()
+            const noteData = await client.stub.getCurrentNoteFolderId()
             setCurrentFolderId(folderId)
           } catch (error) {
             console.error('Error loading note folder:', error)
