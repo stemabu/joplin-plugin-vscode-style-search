@@ -4,7 +4,7 @@ Dieses Joplin-Plugin bietet ein Notiz-Suchpanel, das dem Suchpanel in VS Code na
 
 Panel mit `STRG-UMSCHALT-F` umschalten.
 
-**Diese M-Edition des Plugins, geforked von https://github.com/markerikson/joplin-plugin-vscode-style-search, um meine persönlichen Anforderungen zu erfüllen, enthält einen Modus, der gefundene Notizen in auswählbare Notizbücher verschiebt. Zudem gibt es einen Ähnlichkeitsmodus, der die Notizen anzeigt, die der gerade gewählten ähnlich sind. Hauptanwendungsfälle sind das Sortieren von Notizen und das Entfernen von Duplikaten.**
+**Diese M-Edition des Plugins, geforked von https://github.com/markerikson/joplin-plugin-vscode-style-search, um meine persönlichen Anforderungen zu erfüllen, enthält einen Modus, in dem gefundene Notizen in auswählbare Notizbücher verschoben werden können. Zudem gibt es einen Ähnlichkeitsmodus, der die Notizen anzeigt, die der gerade gewählten Notiz ähnlich sind. Hauptanwendungsfälle sind das Sortieren von Notizen und das Entfernen von Duplikaten.**
 
 Drücken von `F4` wechselt in den Ähnlichkeitsmodus. Mehrere Algorithmen sind für die Ähnlichkeitssuche auswählbar und für jeden Algorithmus kann ein Schwellwert festgelegt werden.
 
