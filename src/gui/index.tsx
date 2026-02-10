@@ -382,7 +382,6 @@ useEffect(() => {
       const currentSearch = searchText
       setTimeout(() => {
         setSuccessMessage('')
-        setMoveMode(false)
         
         // Suche aktualisieren um neue Ordner anzuzeigen
         setSearchText('')
