@@ -764,7 +764,7 @@ useEffect(() => {
         )}
         
 {/* NEU: Ähnlichkeitssuche-Ordner Info */}
-{mode === 'similarity' && limitToFolders && additionalFolder && (
+{mode === 'similarity' && limitToFolders && additionalFolder && currentFolderId && (
   <div className="flex gap-2 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded ml-auto">
     <span className="text-gray-700 dark:text-gray-300 font-semibold">
       Suche in:
