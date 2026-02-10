@@ -12,4 +12,13 @@ Pressing `F4` changes to similarity-mode. Several methods are selectable.
 
 Pressing `F7` uses the selected text in the current note as search string. Pressing `F5` uses text within the second square brackets in the title of the current note as search string.
 
-Versionen ab 3.5 enthalten den Ähnlichkeitsmodus und sind in Deutsch.
+Versionen ab 3.5 enthalten den Ähnlichkeitsmodus und sind in Deutsch. Features:
+
++ Normale Suche mit Treffern
++ Ähnlichkeitssuche mit 4 Algorithmen (Jaccard, Cosine, Dice, MinHash)
++ Ähnlichkeitsprozentsätze werden angezeigt
++ Ähnlichkeitssuche kann auf aktuelles + 1 zusätzliches Notizbuch begrenzt werden
++ Titel-only vs. Volltext-Vergleich
++ Persistente Schwellwerte für jeden Algorithmus
++ Notizen verschieben mit 2 Ziel-Notizbüchern
++ Alle Einstellungen bleiben nach Neustart erhalten
