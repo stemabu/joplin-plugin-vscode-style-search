@@ -144,10 +144,10 @@ useEffect(() => {
       setThresholds(loadedThresholds)
       
       // Zielordner laden
-const folder1 = await client.stub.getSetting('targetFolder1')
-const folder2 = await client.stub.getSetting('targetFolder2')
-setTargetFolder1(folder1 || '')  // Setze immer, auch wenn leer
-setTargetFolder2(folder2 || '')  // Setze immer, auch wenn leer
+      const folder1 = await client.stub.getSetting('targetFolder1')
+      const folder2 = await client.stub.getSetting('targetFolder2')
+      setTargetFolder1(folder1 || '')  // Setze immer, auch wenn leer
+      setTargetFolder2(folder2 || '')  // Setze immer, auch wenn leer
       
       // Ordner-Limit-Modus laden
       const limitFolders = await client.stub.getSetting('limitToFolders')
@@ -174,6 +174,7 @@ setTargetFolder2(folder2 || '')  // Setze immer, auch wenn leer
   
   loadSettings()
 }, [])
+  
 // NEU: Ordner laden wenn Config-Dialog geöffnet wird
 useEffect(() => {
   const loadFolders = async () => {
