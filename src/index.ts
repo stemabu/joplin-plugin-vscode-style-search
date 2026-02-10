@@ -552,37 +552,36 @@ joplin.plugins.register({
         label: 'MinHash Threshold (Full text)',
       },
       // Zielordner
-'targetFolder1': {
-    value: '',
-    type: SettingItemType.String,
-    section: 'vscodeSearchSettings',
-    public: false,
-    label: 'Target Folder 1 for moving notes',
-  },
-  'targetFolder2': {
-    value: '',
-    type: SettingItemType.String,
-    section: 'vscodeSearchSettings',
-    public: false,
-    label: 'Target Folder 2 for moving notes',
-  },
-  // NEU: Diese beiden müssen hinzugefügt werden
-  'limitToFolders': {
-    value: false,
-    type: SettingItemType.Bool,
-    section: 'vscodeSearchSettings',
-    public: false,
-    label: 'Limit similarity search to folders',
-  },
-  'additionalFolder': {
-    value: '',
-    type: SettingItemType.String,
-    section: 'vscodeSearchSettings',
-    public: false,
-    label: 'Additional folder for similarity search',
-  },
-})
-
+      'targetFolder1': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'vscodeSearchSettings',
+        public: false,
+        label: 'Target Folder 1 for moving notes',
+      },
+      'targetFolder2': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'vscodeSearchSettings',
+        public: false,
+        label: 'Target Folder 2 for moving notes',
+      },
+      // Ähnlichkeitssuche
+      'limitToFolders': {
+        value: false,
+        type: SettingItemType.Bool,
+        section: 'vscodeSearchSettings',
+        public: false,
+        label: 'Limit similarity search to folders',
+      },
+      'additionalFolder': {
+        value: '',
+        type: SettingItemType.String,
+        section: 'vscodeSearchSettings',
+        public: false,
+        label: 'Additional folder for similarity search',
+      },
+    })
 
     const panel = await joplin.views.panels.create('panel_1')
     await joplin.views.panels.hide(panel)
