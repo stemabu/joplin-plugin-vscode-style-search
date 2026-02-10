@@ -547,17 +547,6 @@ joplin.plugins.register({
     await joplin.views.panels.hide(panel)
     setUpSearchPanel(panel)
 
-    // Selection Counter Panel erstellen und PERMANENT anzeigen
-    const selectionCounterPanel = await joplin.views.panels.create('selection_counter_panel')
-    await joplin.views.panels.addScript(selectionCounterPanel, './selectionCounter.css')
-    await updateSelectionCounter(selectionCounterPanel)
-    await joplin.views.panels.show(selectionCounterPanel)
-
-    // Bei Änderung der Notiz-Auswahl Counter aktualisieren
-    await joplin.workspace.onNoteSelectionChange(async () => {
-      await updateSelectionCounter(selectionCounterPanel)
-    })
-
     // Search Panel Commands
     joplin.commands.register({
       name: 'isquaredsoftware.vscode-search.toggle_panel',
