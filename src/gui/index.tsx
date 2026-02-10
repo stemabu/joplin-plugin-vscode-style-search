@@ -155,11 +155,18 @@ useEffect(() => {
       if (limitFolders !== undefined && limitFolders !== null) {
         setLimitToFolders(limitFolders)
       }
-      if (addFolder) setAdditionalFolder(addFolder)
+      if (addFolder && addFolder !== '') setAdditionalFolder(addFolder)
       
       // Aktuellen Schwellwert setzen
       const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof loadedThresholds
       setSimilarityThreshold(loadedThresholds[key])
+      
+      // NEU: Auch currentFolderId beim Start laden
+      const noteId = await client.stub.getCurrentNoteId()
+      if (noteId) {
+        const folderId = await client.stub.getCurrentNoteFolderId()
+        setCurrentFolderId(folderId)
+      }
     } catch (error) {
       console.error('Error loading settings:', error)
     }
@@ -167,7 +174,6 @@ useEffect(() => {
   
   loadSettings()
 }, [])
-
 // NEU: Ordner laden wenn Config-Dialog geöffnet wird
 useEffect(() => {
   const loadFolders = async () => {
