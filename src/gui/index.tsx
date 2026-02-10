@@ -122,49 +122,51 @@ function App() {
     minhash_full: DEFAULT_THRESHOLDS.minhash.full,
   })
 
-  // Settings beim Start laden
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        // Schwellwerte laden
-        const loadedThresholds = {
-          jaccard_title: await client.stub.getSetting('threshold_jaccard_title'),
-          jaccard_full: await client.stub.getSetting('threshold_jaccard_full'),
-          cosine_title: await client.stub.getSetting('threshold_cosine_title'),
-          cosine_full: await client.stub.getSetting('threshold_cosine_full'),
-          dice_title: await client.stub.getSetting('threshold_dice_title'),
-          dice_full: await client.stub.getSetting('threshold_dice_full'),
-          minhash_title: await client.stub.getSetting('threshold_minhash_title'),
-          minhash_full: await client.stub.getSetting('threshold_minhash_full'),
-        }
-        setThresholds(loadedThresholds)
-        
-        // Zielordner laden
-        const folder1 = await client.stub.getSetting('targetFolder1')
-        const folder2 = await client.stub.getSetting('targetFolder2')
-        if (folder1) setTargetFolder1(folder1)
-        if (folder2) setTargetFolder2(folder2)
-        
-        // NEU: Ordner-Limit-Modus laden
-        const limitFolders = await client.stub.getSetting('limitToFolders')
-        const addFolder = await client.stub.getSetting('additionalFolder')
-        setLimitToFolders(limitFolders)
-        if (addFolder) setAdditionalFolder(addFolder)
-        
-        // Aktuellen Schwellwert setzen
-        const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof loadedThresholds
-        setSimilarityThreshold(loadedThresholds[key])
-        
-        // Alle Ordner laden
-        const folders = await client.stub.getAllFolders()
-        setAllFolders(folders)
-      } catch (error) {
-        console.error('Error loading settings:', error)
+// Settings beim Start laden
+useEffect(() => {
+  const loadSettings = async () => {
+    try {
+      // ZUERST alle Ordner laden
+      const folders = await client.stub.getAllFolders()
+      setAllFolders(folders)
+      
+      // Schwellwerte laden
+      const loadedThresholds = {
+        jaccard_title: await client.stub.getSetting('threshold_jaccard_title'),
+        jaccard_full: await client.stub.getSetting('threshold_jaccard_full'),
+        cosine_title: await client.stub.getSetting('threshold_cosine_title'),
+        cosine_full: await client.stub.getSetting('threshold_cosine_full'),
+        dice_title: await client.stub.getSetting('threshold_dice_title'),
+        dice_full: await client.stub.getSetting('threshold_dice_full'),
+        minhash_title: await client.stub.getSetting('threshold_minhash_title'),
+        minhash_full: await client.stub.getSetting('threshold_minhash_full'),
       }
+      setThresholds(loadedThresholds)
+      
+      // Zielordner laden
+      const folder1 = await client.stub.getSetting('targetFolder1')
+      const folder2 = await client.stub.getSetting('targetFolder2')
+      if (folder1) setTargetFolder1(folder1)
+      if (folder2) setTargetFolder2(folder2)
+      
+      // Ordner-Limit-Modus laden
+      const limitFolders = await client.stub.getSetting('limitToFolders')
+      const addFolder = await client.stub.getSetting('additionalFolder')
+      if (limitFolders !== undefined && limitFolders !== null) {
+        setLimitToFolders(limitFolders)
+      }
+      if (addFolder) setAdditionalFolder(addFolder)
+      
+      // Aktuellen Schwellwert setzen
+      const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof loadedThresholds
+      setSimilarityThreshold(loadedThresholds[key])
+    } catch (error) {
+      console.error('Error loading settings:', error)
     }
-    
-    loadSettings()
-  }, [])
+  }
+  
+  loadSettings()
+}, [])
 
 // NEU: Ordner laden wenn Config-Dialog geöffnet wird
 useEffect(() => {
@@ -755,22 +757,21 @@ useEffect(() => {
           </div>
         )}
         
-        {/* NEU: Ähnlichkeitssuche-Ordner Info */}
-        {mode === 'similarity' && limitToFolders && additionalFolder && (
-          <div className="flex gap-2 text-sm bg-purple-50 dark:bg-purple-900 dark:bg-opacity-20 px-2 py-1 rounded ml-auto">
-            <span className="text-purple-700 dark:text-purple-300 font-semibold">
-              Suche in:
-            </span>
-            <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-purple-500"></span>
-              Aktuelles Notizbuch
-            </span>
-            <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-purple-500"></span>
-              {allFolders.find(f => f.id === additionalFolder)?.title || 'Zusätzliches Notizbuch'}
-            </span>
-          </div>
-        )}
+{/* NEU: Ähnlichkeitssuche-Ordner Info */}
+{mode === 'similarity' && limitToFolders && additionalFolder && (
+  <div className="flex gap-2 text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded ml-auto">
+    <span className="text-gray-700 dark:text-gray-300 font-semibold">
+      Suche in:
+    </span>
+    <span className="text-orange-600 dark:text-orange-400 flex items-center gap-1">
+      aktuellem Notizbuch ({allFolders.find(f => f.id === currentFolderId)?.title || '?'})
+    </span>
+    <span className="text-gray-600 dark:text-gray-400">+</span>
+    <span className="text-orange-600 dark:text-orange-400 flex items-center gap-1">
+      {allFolders.find(f => f.id === additionalFolder)?.title || 'Zusätzliches Notizbuch'}
+    </span>
+  </div>
+)}
       </div>
     )}
   </div>
