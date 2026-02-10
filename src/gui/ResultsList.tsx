@@ -60,7 +60,7 @@ export default function ResultsList({
     similarities,
     openNote,
   }
-}, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, additionalFolderName, openNote])
+}, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, openNote])
 
   if (status === STATUS_RESOLVED && results.length === 0) {
     return <div>No results found somehow!</div>
