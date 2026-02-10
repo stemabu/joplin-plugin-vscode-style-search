@@ -144,10 +144,10 @@ useEffect(() => {
       setThresholds(loadedThresholds)
       
       // Zielordner laden
-      const folder1 = await client.stub.getSetting('targetFolder1')
-      const folder2 = await client.stub.getSetting('targetFolder2')
-      if (folder1) setTargetFolder1(folder1)
-      if (folder2) setTargetFolder2(folder2)
+const folder1 = await client.stub.getSetting('targetFolder1')
+const folder2 = await client.stub.getSetting('targetFolder2')
+setTargetFolder1(folder1 || '')  // Setze immer, auch wenn leer
+setTargetFolder2(folder2 || '')  // Setze immer, auch wenn leer
       
       // Ordner-Limit-Modus laden
       const limitFolders = await client.stub.getSetting('limitToFolders')
