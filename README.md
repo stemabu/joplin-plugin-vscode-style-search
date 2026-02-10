@@ -20,5 +20,3 @@ Versionen ab 3.5 enthalten den Ähnlichkeitsmodus und sind in Deutsch. Features:
 + Persistente Schwellwerte für jeden Algorithmus
 + Notizen verschieben mit 2 wählbaren Ziel-Notizbüchern
 + Alle Einstellungen bleiben nach Neustart erhalten
-
-Über ein Mini-Panel wird derzeit noch die Anzahl der markierten Notizen angezeigt. Dieses Feature entfällt in einer der nächsten Versionen.
