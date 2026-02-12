@@ -406,19 +406,19 @@ useEffect(() => {
     let parsedNotes: ParsedNote[] = []
     let sims: Record<string, number> = {}
     
-if (mode === 'search') {
-  if (searchText) {
-    // Nur Keywords extrahieren wenn KEINE Filter vorhanden sind
-    const hasFilter = /\w+:/.test(searchText)
-    const parsedKeywords = hasFilter ? [] : keywords(searchText)
-    
-    const searchResult = await client.stub.search({ searchText: searchText, titlesOnly })
-    notes = searchResult.notes
-    folders = searchResult.folders
+    if (mode === 'search') {
+      if (searchText) {
+        // Nur Keywords extrahieren wenn KEINE Filter vorhanden sind
+        const hasFilter = /\w+:/.test(searchText)
+        const parsedKeywords = hasFilter ? [] : keywords(searchText)
+        
+        const searchResult = await client.stub.search({ searchText: searchText, titlesOnly })
+        notes = searchResult.notes
+        folders = searchResult.folders
 
-    parsedNotes = notes.map((note) => parseNote(note, parsedKeywords, folders, titlesOnly)).filter(Boolean)
-  }
-}
+        parsedNotes = notes.map((note) => parseNote(note, parsedKeywords, folders, titlesOnly)).filter(Boolean)
+      }
+    }
     } else {
       // Similarity Mode
       if (currentNoteId) {
