@@ -161,7 +161,7 @@ const noteHeaderContent = (
     
     {/* NEU: Ähnlichkeitsprozentsatz im Similarity-Mode */}
     {mode === 'similarity' && similarities[id] !== undefined && (
-      <span className="text-xm text-orange-600 dark:text-orange-400 font-semibold ml-2">
+      <span className="text-base text-orange-600 dark:text-orange-400 font-semibold ml-2">
         {similarities[id].toFixed(0)}%
       </span>
     )}
@@ -173,7 +173,7 @@ const noteHeaderContent = (
 )}
     
     {/* Ordner-Anzeige */}
-    <span className="text-xm text-gray-500 dark:text-gray-400 ml-2">
+    <span className="text-base text-gray-500 dark:text-gray-400 ml-2">
       {parentFolderTitle}
     </span>
     
