@@ -389,20 +389,21 @@ async function searchNotes(queryOptions: SearchQueryOptions): Promise<NotesSearc
 
   const { searchText, titlesOnly } = queryOptions
 
-  // Erweiterte Query-Verarbeitung: einfach den searchText durchreichen
-  // Joplin's Such-API unterstützt bereits notebook:, tag:, created:, updated:, etc.
   let query = searchText
   
-  // Wenn titlesOnly aktiviert ist und der searchText noch KEIN Filter-Präfix enthält
-  // (erkennbar an fehlenden Doppelpunkten in sinnvollen Positionen)
+  // Bei titlesOnly: Alle Text-Begriffe (ohne Filter-Präfix) zu title: umwandeln
   if (titlesOnly) {
-    // Prüfen ob bereits ein Filter verwendet wird (notebook:, tag:, title:, body:, etc.)
-    const hasFilter = /^\s*\w+:/.test(searchText.trim())
-    if (!hasFilter) {
-      query = `title:${searchText}`
-    }
-    // Wenn bereits Filter vorhanden sind, den Suchtext unverändert lassen
-    // Der Benutzer weiß dann selbst, was er tut
+    // Splitte Query in Wörter und prüfe jedes
+    const words = searchText.split(/\s+/)
+    const processedWords = words.map(word => {
+      // Hat das Wort bereits einen Filter? (enthält ':')
+      if (word.includes(':')) {
+        return word  // Behalte Filter wie tag:, notebook: etc
+      } else {
+        return `title:${word}`  // Text-Begriff → title:Begriff
+      }
+    })
+    query = processedWords.join(' ')
   }
 
   const fields = ['id', 'title', 'body', 'parent_id', 'is_todo', 'todo_completed', 'todo_due', 'order', 'created_time']
