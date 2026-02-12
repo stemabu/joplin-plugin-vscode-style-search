@@ -167,7 +167,7 @@ const noteHeaderContent = (
     )}
     
 {mode === 'search' && (
-  <div className={styles.Count}>
+  <div className={styles.Count} style={{ minWidth: '5rem' }}>
     {!titlesOnly && `(${matchCount === 1 ? '1 match' : `${matchCount} matches`})`}
   </div>
 )}
