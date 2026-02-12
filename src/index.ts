@@ -389,7 +389,14 @@ async function searchNotes(queryOptions: SearchQueryOptions): Promise<NotesSearc
 
   const { searchText, titlesOnly } = queryOptions
 
-  const query = titlesOnly ? `title:${searchText}` : searchText
+  // Erweiterte Query-Verarbeitung: einfach den searchText durchreichen
+  // Joplin's Such-API unterstützt bereits notebook:, tag:, created:, updated:, etc.
+  let query = searchText
+  
+  // Wenn titlesOnly aktiviert ist und KEIN title: Filter bereits vorhanden ist
+  if (titlesOnly && !searchText.includes('title:')) {
+    query = `title:${searchText}`
+  }
 
   const fields = ['id', 'title', 'body', 'parent_id', 'is_todo', 'todo_completed', 'todo_due', 'order', 'created_time']
 
