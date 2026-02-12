@@ -199,11 +199,16 @@ const noteHeaderContent = (
         onChange={(collapsed) => listData.setCollapsed(index, !collapsed)}
       />
     )
+  } else {
+    // Bei titlesOnly: Gleiche Struktur wie Expandable, nur ohne Expand-Funktion
+    rowContent = (
+      <div className={styles.LocationRow} onClick={handleOpenNoteClicked}>
+        {noteHeaderContent}
+      </div>
+    )
   }
 
   return <div style={style}>{rowContent}</div>
-}
-
 interface MatchRowProps {
   query: string
   result: FragmentItemData
