@@ -1,11 +1,12 @@
 .LocationRow,
 .MatchRow {
-  height: 1.25rem;
-  line-height: 1.25rem;
+  height: 1.6rem;
+  line-height: 1.6rem;
 
   white-space: pre;
   overflow: hidden;
   text-overflow: ellipsis;
+  border-bottom: 1px solid var(--grey-20);
 }
 
 .LocationRow {
