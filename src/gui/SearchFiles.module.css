@@ -58,7 +58,7 @@
   flex: 1 1 auto;
   background: none;
   color: var(--color-default);
-  font-size: var(--font-size-regular);
+  font-size: var(--font-size-large);
 
   /* Override overly-specific style from legacy app */
   box-shadow: none !important;
