@@ -19,58 +19,7 @@ export interface SimilarityQueryOptions {
   threshold: number
 }
 
-// Funktion für Extraktion von rechtsasync function searchNotes(queryOptions: SearchQueryOptions): Promise<NotesSearchResults> {
-  let hasMore = false
-  let allNotes: Note[] = []
-  let page = 1
-
-  const { searchText, titlesOnly } = queryOptions
-
-  let query = searchText
-  
-  // Bei titlesOnly: Alle Text-Begriffe (ohne Filter-Präfix) zu title: umwandeln
-  if (titlesOnly) {
-    // Splitte Query in Wörter und prüfe jedes
-    const words = searchText.split(/\s+/)
-    const processedWords = words.map(word => {
-      // Hat das Wort bereits einen Filter? (enthält ':')
-      if (word.includes(':')) {
-        return word  // Behalte Filter wie tag:, notebook: etc
-      } else {
-        return `title:${word}`  // Text-Begriff → title:Begriff
-      }
-    })
-    query = processedWords.join(' ')
-  }
-
-  const fields = ['id', 'title', 'body', 'parent_id', 'is_todo', 'todo_completed', 'todo_due', 'order', 'created_time']
-
-  while (true) {
-    const res: SearchResponse<Note> = await joplin.data.get(['search'], {
-      query,
-      page,
-      fields,
-      limit: 100,
-    })
-
-    const { items: notes, has_more } = res
-    allNotes = allNotes.concat(notes)
-
-    hasMore = has_more
-    if (!hasMore) {
-      break
-    } else {
-      page++
-    }
-  }
-
-  const allFoldersResult: SearchResponse<Folder> = await joplin.data.get(['folders'], {})
-
-  return {
-    notes: allNotes,
-    folders: allFoldersResult.items,
-  }
-}
+// Funktion für Extraktion von rechts
 function extractFromTitleRight(title: string, startDelim: string, endDelim: string): string | null {
   const endIndex = title.lastIndexOf(endDelim)
   if (endIndex === -1) return null
