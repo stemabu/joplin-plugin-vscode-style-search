@@ -419,7 +419,7 @@ useEffect(() => {
         parsedNotes = notes.map((note) => parseNote(note, parsedKeywords, folders, titlesOnly)).filter(Boolean)
       }
     }
-    } else {
+    else {
       // Similarity Mode
       if (currentNoteId) {
         // NEU: Ordner-Filter vorbereiten
