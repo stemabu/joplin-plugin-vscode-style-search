@@ -90,7 +90,7 @@ export const parseNote = (
     }
   }
 
-  if (titlesOnly || fragmentMatches.length) {
+if (titlesOnly || fragmentMatches.length || parsedKeywords.length === 0) {
     const folder = folders.find((folder) => folder.id === note.parent_id)
     const folderTitle = folder?.title ?? ''
     const noteItem: NoteItemData = {
