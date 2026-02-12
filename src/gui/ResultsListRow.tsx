@@ -209,6 +209,7 @@ const noteHeaderContent = (
   }
 
   return <div style={style}>{rowContent}</div>
+}
   
 interface MatchRowProps {
   query: string
