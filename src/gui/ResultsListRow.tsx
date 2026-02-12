@@ -16,7 +16,7 @@ import { GenericListItemData } from './GenericList'
 import styles from './ResultsListRow.module.css'
 import { Folder } from 'src'
 
-export const ITEM_SIZE = 20
+export const ITEM_SIZE = 28
 
 export type ItemData = {
   listData: NoteSearchListData
