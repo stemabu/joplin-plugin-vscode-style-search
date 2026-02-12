@@ -391,20 +391,20 @@ async function searchNotes(queryOptions: SearchQueryOptions): Promise<NotesSearc
 
   let query = searchText
   
-  // Bei titlesOnly: Alle Text-Begriffe (ohne Filter-Präfix) zu title: umwandeln
+  // NUR bei titlesOnly: Wörter ohne Filter zu title: umwandeln
   if (titlesOnly) {
-    // Splitte Query in Wörter und prüfe jedes
     const words = searchText.split(/\s+/)
     const processedWords = words.map(word => {
-      // Hat das Wort bereits einen Filter? (enthält ':')
+      // Hat das Wort einen Filter? (enthält ':')
       if (word.includes(':')) {
         return word  // Behalte Filter wie tag:, notebook: etc
       } else {
-        return `title:${word}`  // Text-Begriff → title:Begriff
+        return `title:"${word}"`  // Text-Begriff → title:"Begriff"
       }
     })
     query = processedWords.join(' ')
   }
+  // Bei titlesOnly=false bleibt query = searchText (unverändert!)
 
   const fields = ['id', 'title', 'body', 'parent_id', 'is_todo', 'todo_completed', 'todo_due', 'order', 'created_time']
 
