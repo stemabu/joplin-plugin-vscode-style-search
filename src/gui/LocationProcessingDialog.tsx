@@ -9,12 +9,12 @@ interface LocationChange {
   tagsToAdd: string[]
   changeType: 'plz-to-city' | 'city-to-state' | 'no-change' | 'error'
   errorMessage?: string
-  section9Before: string
-  section10Before: string
-  section11Before: string
-  section9After: string
-  section10After: string
-  section11After: string
+  section9Before?: string
+  section10Before?: string
+  section11Before?: string
+  section9After?: string
+  section10After?: string
+  section11After?: string
 }
 
 interface LocationProcessingDialogProps {
@@ -112,14 +112,26 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
     
     const changesToApply = changes.filter((_, index) => selectedChanges.has(index))
     
+    console.log(`[LocationDialog] Applying ${changesToApply.length} changes...`)
+    
     setProcessing(true)
     try {
       await client.stub.applyLocationChanges(changesToApply)
-      alert(`${changesToApply.length} Änderung(en) erfolgreich durchgeführt!`)
-      onClose()
+      
+      console.log(`[LocationDialog] ✓ Successfully applied ${changesToApply.length} changes`)
+      
+      // Kein Alert bei Erfolg - Dialog einfach zurücksetzen
+      setChanges([])
+      setSelectedChanges(new Set())
+      
     } catch (error) {
-      console.error('Error applying changes:', error)
-      alert('Fehler beim Anwenden der Änderungen: ' + error)
+      console.error('[LocationDialog] ============================================')
+      console.error('[LocationDialog] ERROR applying changes:', error)
+      console.error('[LocationDialog] Error details:', JSON.stringify(error, null, 2))
+      console.error('[LocationDialog] ============================================')
+      
+      // Nur bei Fehler einen Dialog anzeigen
+      alert(`Fehler beim Anwenden der Änderungen:\n${error.message || error.code || 'Unbekannter Fehler'}`)
     } finally {
       setProcessing(false)
     }
