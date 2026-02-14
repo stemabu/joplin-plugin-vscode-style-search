@@ -19,9 +19,10 @@ interface LocationChange {
 
 interface LocationProcessingDialogProps {
   client: ChannelClient<any>
+  onClose: () => void
 }
 
-export default function LocationProcessingDialog({ client }: LocationProcessingDialogProps) {
+export default function LocationProcessingDialog({ client, onClose }: LocationProcessingDialogProps) {
   const [changes, setChanges] = useState<LocationChange[]>([])
   const [loading, setLoading] = useState(false)
   const [processing, setProcessing] = useState(false)
@@ -115,8 +116,7 @@ export default function LocationProcessingDialog({ client }: LocationProcessingD
     try {
       await client.stub.applyLocationChanges(changesToApply)
       alert(`${changesToApply.length} Änderung(en) erfolgreich durchgeführt!`)
-      setChanges([])
-      setSelectedChanges(new Set())
+      onClose()
     } catch (error) {
       console.error('Error applying changes:', error)
       alert('Fehler beim Anwenden der Änderungen: ' + error)
@@ -194,9 +194,9 @@ export default function LocationProcessingDialog({ client }: LocationProcessingD
                   ) : (
                     <>
                       <div className={`font-mono ${getChangeColor(change.changeType)}`}>
-                        Änderung: {change.section9Before};{change.section10Before};{change.section11Before} 
+                        Änderung: {change.section9Before}; {change.section10Before}; {change.section11Before} 
                         <span className="mx-2">→</span>
-                        {change.section9After};{change.section10After};{change.section11After}
+                        {change.section9After}; {change.section10After}; {change.section11After}
                       </div>
                       
                       {change.tagsToAdd.length > 0 && (
@@ -221,10 +221,7 @@ export default function LocationProcessingDialog({ client }: LocationProcessingD
           
           <div className="flex justify-end gap-3">
             <button
-              onClick={() => {
-                setChanges([])
-                setSelectedChanges(new Set())
-              }}
+              onClick={onClose}
               className="px-4 py-2 bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 dark:hover:bg-gray-600"
               disabled={processing}
             >
