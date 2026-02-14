@@ -120,9 +120,13 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
       
       console.log(`[LocationDialog] ✓ Successfully applied ${changesToApply.length} changes`)
       
-      // Kein Alert bei Erfolg - Dialog einfach zurücksetzen
-      setChanges([])
-      setSelectedChanges(new Set())
+      // Tags-Cache aktualisieren
+      console.log(`[LocationDialog] Refreshing tags cache...`)
+      await client.stub.refreshTagsCache()
+      
+      // Dialog schließen nach erfolgreicher Ausführung
+      console.log(`[LocationDialog] Closing dialog...`)
+      await client.stub.closeDialog()
       
     } catch (error) {
       console.error('[LocationDialog] ============================================')

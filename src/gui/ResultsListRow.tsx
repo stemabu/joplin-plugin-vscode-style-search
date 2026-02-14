@@ -187,10 +187,12 @@ const noteHeaderContent = (
       </div>
     )}
     
-    {/* Ordner-Anzeige */}
-    <span className="text-base text-gray-500 dark:text-gray-400 ml-2">
-      {parentFolderTitle}
-    </span>
+    {/* Notizbuch-Anzeige (grün gestylt wie Tags) */}
+    {parentFolderTitle && (
+      <span className="px-2 py-0.5 ml-2 bg-green-100 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300 text-xs rounded">
+        <span aria-hidden="true">📗 </span>{parentFolderTitle}
+      </span>
+    )}
     
     <Icon className={styles.LocationIcon} type="open" title="Open Note" onClick={handleOpenNoteClicked} />
   </>
