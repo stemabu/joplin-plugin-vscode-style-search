@@ -214,6 +214,27 @@ useEffect(() => {
   
   loadFolders()
 }, [showConfig, mode])
+
+// NEU: Validiere gespeicherte Filter und setze sie zurück, wenn sie nicht mehr existieren
+useEffect(() => {
+  if (selectedNotebook && allFolders.length > 0) {
+    const notebookExists = allFolders.some(f => f.id === selectedNotebook)
+    if (!notebookExists) {
+      console.log('Saved notebook no longer exists, clearing selection')
+      handleNotebookFilterChange('')
+    }
+  }
+}, [allFolders, selectedNotebook])
+
+useEffect(() => {
+  if (selectedTag && allTags.length > 0) {
+    const tagExists = allTags.some(t => t.id === selectedTag)
+    if (!tagExists) {
+      console.log('Saved tag no longer exists, clearing selection')
+      handleTagFilterChange('')
+    }
+  }
+}, [allTags, selectedTag])
   
   // Schwellwert aktualisieren bei Algorithmus-/Modus-Wechsel
   useEffect(() => {
@@ -760,6 +781,7 @@ if (mode === 'search') {
                 type="checkbox" 
                 checked={!!selectedNotebook} 
                 onChange={(e) => handleNotebookFilterChange(e.target.checked ? (allFolders[0]?.id || '') : '')} 
+                disabled={allFolders.length === 0}
               />
               <span>Notizbuch:</span>
               {selectedNotebook && (
@@ -783,6 +805,7 @@ if (mode === 'search') {
                 type="checkbox" 
                 checked={!!selectedTag} 
                 onChange={(e) => handleTagFilterChange(e.target.checked ? (allTags[0]?.id || '') : '')} 
+                disabled={allTags.length === 0}
               />
               <span>Tag:</span>
               {selectedTag && (
