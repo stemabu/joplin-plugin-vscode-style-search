@@ -51,7 +51,21 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
       console.log('[LocationDialog] Calling analyzeLocationData RPC method...')
       const analyzedChanges = await client.stub.analyzeLocationData(noteIds)
       console.log('[LocationDialog] Received analyzed changes:', analyzedChanges)
-      console.log('[LocationDialog] Number of changes:', analyzedChanges.length)
+console.log('[LocationDialog] Number of changes:', analyzedChanges.length)
+
+// NEU: Detaillierte Ausgabe jedes Changes
+analyzedChanges.forEach((change, index) => {
+  console.log(`[LocationDialog] Change ${index + 1}:`)
+  console.log(`  - Note ID: ${change.noteId}`)
+  console.log(`  - Note Title: ${change.noteTitle}`)
+  console.log(`  - Change Type: ${change.changeType}`)
+  console.log(`  - Original Line: ${change.originalLine}`)
+  console.log(`  - New Line: ${change.newLine}`)
+  console.log(`  - Tags to Add: ${JSON.stringify(change.tagsToAdd)}`)
+  if (change.errorMessage) {
+    console.error(`  - ERROR: ${change.errorMessage}`)
+  }
+})
       
       setChanges(analyzedChanges)
       console.log('[LocationDialog] Changes state updated')
