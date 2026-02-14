@@ -931,6 +931,16 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     console.log(`[LocationProcessing] FINISHED: All changes applied successfully`)
     console.log(`[LocationProcessing] ============================================`)
   },
+  
+  closeDialog: async (): Promise<void> => {
+    // This will be overridden in onStart when panel is available
+    console.log('[LocationProcessing] closeDialog called but panel not available yet')
+  },
+  
+  refreshTagsCache: async (): Promise<void> => {
+    console.log('[LocationProcessing] Refreshing tags cache...')
+    // Tags are always fetched fresh via getAllTags(), no cache to clear
+  },
 }
 
 export type HandlerType = typeof handler
@@ -1176,6 +1186,12 @@ joplin.plugins.register({
     const panel = await joplin.views.panels.create('panel_1')
     await joplin.views.panels.hide(panel)
     setUpSearchPanel(panel)
+
+    // Override closeDialog with panel reference
+    handler.closeDialog = async (): Promise<void> => {
+      console.log('[LocationProcessing] Closing dialog...')
+      await joplin.views.panels.hide(panel)
+    }
 
     // Search Panel Commands
     joplin.commands.register({
