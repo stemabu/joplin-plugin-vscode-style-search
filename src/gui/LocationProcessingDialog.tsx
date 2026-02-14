@@ -27,27 +27,43 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
   }, [])
 
   const loadChanges = async () => {
+    console.log('[LocationDialog] ============================================')
+    console.log('[LocationDialog] START: loadChanges called')
+    
     setLoading(true)
     try {
+      console.log('[LocationDialog] Fetching selected note IDs...')
       const noteIds = await client.stub.getSelectedNoteIds()
+      console.log('[LocationDialog] Selected note IDs:', noteIds)
       setSelectedNoteIds(noteIds)
       
       if (noteIds.length === 0) {
+        console.warn('[LocationDialog] No notes selected')
         alert('Bitte markieren Sie mindestens eine Notiz.')
         return
       }
       
       if (noteIds.length > 100) {
+        console.warn('[LocationDialog] More than 100 notes selected, limiting to 100')
         alert('Maximal 100 Notizen können gleichzeitig verarbeitet werden. Die ersten 100 werden verarbeitet.')
       }
       
+      console.log('[LocationDialog] Calling analyzeLocationData RPC method...')
       const analyzedChanges = await client.stub.analyzeLocationData(noteIds)
+      console.log('[LocationDialog] Received analyzed changes:', analyzedChanges)
+      console.log('[LocationDialog] Number of changes:', analyzedChanges.length)
+      
       setChanges(analyzedChanges)
+      console.log('[LocationDialog] Changes state updated')
+      
     } catch (error) {
-      console.error('Error analyzing location data:', error)
+      console.error('[LocationDialog] ERROR in loadChanges:', error)
+      console.error('[LocationDialog] Error stack:', error.stack)
+      console.error('[LocationDialog] Error details:', JSON.stringify(error, null, 2))
       alert('Fehler beim Analysieren der Notizen: ' + error)
     } finally {
       setLoading(false)
+      console.log('[LocationDialog] ============================================')
     }
   }
 

@@ -257,8 +257,12 @@ function decodeHtmlEntities(text: string): string {
 
 // Helper function for HTTPS GET requests
 function httpsGet(url: string): Promise<any> {
+  console.log(`[LocationAPI] Making HTTPS GET request to: ${url}`)
+  
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const request = https.get(url, (res) => {
+      console.log(`[LocationAPI] Response status: ${res.statusCode}`)
+      
       let data = ''
       
       res.on('data', (chunk) => {
@@ -266,16 +270,26 @@ function httpsGet(url: string): Promise<any> {
       })
       
       res.on('end', () => {
+        console.log(`[LocationAPI] Response complete. Data length: ${data.length}`)
+        console.log(`[LocationAPI] Raw response: ${data.substring(0, 500)}...`)
+        
         try {
           const parsed = JSON.parse(data)
+          console.log(`[LocationAPI] Successfully parsed JSON`)
           resolve(parsed)
         } catch (error) {
+          console.error(`[LocationAPI] Failed to parse JSON:`, error)
           reject(new Error(`Failed to parse JSON: ${error.message}`))
         }
       })
-    }).on('error', (error) => {
+    })
+    
+    request.on('error', (error) => {
+      console.error(`[LocationAPI] HTTPS request error:`, error)
       reject(error)
     })
+    
+    request.end()
   })
 }
 
@@ -591,29 +605,42 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
   },
 
   analyzeLocationData: async (noteIds: string[]): Promise<any[]> => {
+    console.log(`[LocationProcessing] ============================================`)
+    console.log(`[LocationProcessing] START: analyzeLocationData called`)
+    console.log(`[LocationProcessing] Received ${noteIds.length} note IDs:`, noteIds)
+    console.log(`[LocationProcessing] ============================================`)
+    
     const changes: any[] = []
     
     // Maximum 100 notes
     const limitedNoteIds = noteIds.slice(0, 100)
     
-    console.log(`[LocationProcessing] Processing ${limitedNoteIds.length} notes`)
+    console.log(`[LocationProcessing] Processing ${limitedNoteIds.length} notes (limited)`)
     
     for (const noteId of limitedNoteIds) {
+      console.log(`[LocationProcessing] --------------------------------------------`)
+      console.log(`[LocationProcessing] Processing note: ${noteId}`)
+      
       try {
+        console.log(`[LocationProcessing] Fetching note data from Joplin API...`)
         const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body'] })
+        console.log(`[LocationProcessing] Note loaded: "${note.title}"`)
+        console.log(`[LocationProcessing] Body length: ${note.body?.length || 0} characters`)
+        
+        console.log(`[LocationProcessing] Parsing MusliStart line...`)
         const parsed = parseMusliLine(note.body)
         
         if (!parsed) {
-          console.log(`[LocationProcessing] Note ${noteId} (${note.title}): No MusliStart line found`)
+          console.log(`[LocationProcessing] No MusliStart line found in note "${note.title}"`)
           continue
         }
         
         const { line, sections, decodedLine } = parsed
         
-        console.log(`[LocationProcessing] Note ${noteId} (${note.title}): Found MusliStart line with ${sections.length} sections`)
-        console.log(`[LocationProcessing] Original: ${line}`)
-        console.log(`[LocationProcessing] Decoded: ${decodedLine}`)
-        console.log(`[LocationProcessing] Sections:`, sections)
+        console.log(`[LocationProcessing] ✓ Found MusliStart line with ${sections.length} sections`)
+        console.log(`[LocationProcessing] Original line: ${line}`)
+        console.log(`[LocationProcessing] Decoded line: ${decodedLine}`)
+        console.log(`[LocationProcessing] Sections array:`, JSON.stringify(sections, null, 2))
         
         // Check if enough sections (minimum 11)
         if (sections.length < 11) {
@@ -721,7 +748,8 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
         })
         
       } catch (error) {
-        console.error(`[LocationProcessing] Error processing note ${noteId}:`, error)
+        console.error(`[LocationProcessing] ERROR processing note ${noteId}:`, error)
+        console.error(`[LocationProcessing] Error stack:`, error.stack)
         changes.push({
           noteId: noteId,
           noteTitle: 'Fehler beim Laden',
@@ -734,7 +762,10 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
       }
     }
     
-    console.log(`[LocationProcessing] Finished processing. Total changes: ${changes.length}`)
+    console.log(`[LocationProcessing] ============================================`)
+    console.log(`[LocationProcessing] FINISHED: Total changes found: ${changes.length}`)
+    console.log(`[LocationProcessing] ============================================`)
+    
     return changes
   },
 
