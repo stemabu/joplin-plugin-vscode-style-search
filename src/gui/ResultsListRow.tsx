@@ -172,6 +172,21 @@ const noteHeaderContent = (
   </div>
 )}
     
+    {/* NEU: Tags-Anzeige */}
+    {note.tags && note.tags.length > 0 && (
+      <div className="flex gap-1 ml-2">
+        {note.tags.map((tag) => (
+          <span 
+            key={tag.id}
+            className="px-2 py-0.5 text-xs rounded-full bg-fuchsia-100 dark:bg-fuchsia-900 dark:bg-opacity-30 text-fuchsia-700 dark:text-fuchsia-300 border border-fuchsia-300 dark:border-fuchsia-700"
+            title={tag.title}
+          >
+            {tag.title}
+          </span>
+        ))}
+      </div>
+    )}
+    
     {/* Ordner-Anzeige */}
     <span className="text-base text-gray-500 dark:text-gray-400 ml-2">
       {parentFolderTitle}
