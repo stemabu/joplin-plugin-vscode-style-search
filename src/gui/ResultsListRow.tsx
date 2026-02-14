@@ -186,7 +186,7 @@ const noteHeaderContent = (
     )}
     
     {parentFolderTitle && (
-      <span className="px-2 py-0.5 ml-2 mr-2 bg-green-100 dark:bg-green-900 dark:bg-opacity-30 text-green-700 border border-green-300 dark:border-green-700 dark:text-green-300 text-xs rounded">
+      <span className="px-2 py-0.5 ml-2 mr-1 bg-green-100 dark:bg-green-900 dark:bg-opacity-30 text-green-700 border border-green-300 dark:border-green-700 dark:text-green-300 text-xs rounded">
         {parentFolderTitle}
       </span>
     )}
