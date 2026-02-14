@@ -8,5 +8,6 @@ export interface RpcMethods {
   getTitleInBrackets(): Promise<string | null>
   getSelectedText(): Promise<string | null>
   getAllFolders(): Promise<any[]>  // GEÄNDERT
+  getAllTags(): Promise<any[]>  // NEU
   moveNotes(moves: { noteId: string; folderId: string }[]): Promise<void>  // GEÄNDERT
 }

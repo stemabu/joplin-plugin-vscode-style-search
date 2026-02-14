@@ -325,6 +325,16 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     }
   },
 
+  getAllTags: async (): Promise<any[]> => {
+    try {
+      const tagsResult = await joplin.data.get(['tags'], {})
+      return tagsResult.items
+    } catch (error) {
+      console.error('Error getting tags:', error)
+      return []
+    }
+  },
+
   moveNotes: async (moves: { noteId: string; folderId: string }[]): Promise<void> => {
     try {
       for (const move of moves) {
