@@ -939,7 +939,8 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
   
   refreshTagsCache: async (): Promise<void> => {
     console.log('[LocationProcessing] Refreshing tags cache...')
-    // Tags are always fetched fresh via getAllTags(), no cache to clear
+    // Tags are always fetched fresh via getAllTags() on each request, so no cache to clear.
+    // This method exists for API consistency and potential future caching implementation.
   },
 }
 
