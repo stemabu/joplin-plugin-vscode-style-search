@@ -10,6 +10,8 @@ Drücken von `F4` wechselt in den Ähnlichkeitsmodus. Mehrere Algorithmen sind f
 
 Im Suchen-Modus verwendet `F7` den markierten Text in der aktuellen Notiz als Suchbegriff. Drücken von `F5` verwendet den Text innerhalb der zweiten eckigen Klammern im Titel der aktuellen Notiz als Suchbegriff.
 
+Bei `F12` wird die PLZ der Musli-Zeile in den Ortsnamen verwandelt und bei vorhandenem Ortsnamen das Bundesland ermittelt und in der Muslizeile gespeichert. Zudem werden Bundesland und ggf. Ortsname als Schlagwort gespeichert.
+
 Versionen ab 3.5 enthalten den Ähnlichkeitsmodus und sind in Deutsch. Features:
 
 + Normale Suche mit Treffern
