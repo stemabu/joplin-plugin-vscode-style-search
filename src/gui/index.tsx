@@ -10,6 +10,11 @@ import { ChannelClient, ChannelErrors, PostMessageTarget } from '../shared/chann
 
 import type { Folder, HandlerType, Note } from '../index'
 
+interface Tag {
+  id: string
+  title: string
+}
+
 import './tailwind.css'
 import './variables.css'
 import searchStyles from './SearchFiles.module.css'
@@ -99,6 +104,11 @@ function App() {
 
   const [successMessage, setSuccessMessage] = useState<string>('')
   
+  // NEU: Notebook- und Tag-Filter
+  const [selectedNotebook, setSelectedNotebook] = useState<string>('')
+  const [selectedTag, setSelectedTag] = useState<string>('')
+  const [allTags, setAllTags] = useState<Tag[]>([])
+  
   // Ähnlichkeits-States
   const [similarityAlgorithm, setSimilarityAlgorithm] = useState<SimilarityAlgorithm>('jaccard')
   const [similarityThreshold, setSimilarityThreshold] = useState(30)
@@ -130,6 +140,10 @@ useEffect(() => {
       const folders = await client.stub.getAllFolders()
       setAllFolders(folders)
       
+      // NEU: Tags laden
+      const tags = await client.stub.getAllTags()
+      setAllTags(tags)
+      
       // Schwellwerte laden
       const loadedThresholds = {
         jaccard_title: await client.stub.getSetting('threshold_jaccard_title'),
@@ -157,6 +171,12 @@ useEffect(() => {
       }
       if (addFolder && addFolder !== '') setAdditionalFolder(addFolder)
       
+      // NEU: Filter-Settings laden
+      const savedNotebook = await client.stub.getSetting('selectedNotebook')
+      const savedTag = await client.stub.getSetting('selectedTag')
+      if (savedNotebook !== undefined && savedNotebook !== null) setSelectedNotebook(savedNotebook)
+      if (savedTag !== undefined && savedTag !== null) setSelectedTag(savedTag)
+      
       // Aktuellen Schwellwert setzen
       const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof loadedThresholds
       setSimilarityThreshold(loadedThresholds[key])
@@ -178,18 +198,22 @@ useEffect(() => {
 // NEU: Ordner laden wenn Config-Dialog geöffnet wird
 useEffect(() => {
   const loadFolders = async () => {
-    if (showConfig) {
+    if (showConfig || mode === 'similarity') {
       try {
         const folders = await client.stub.getAllFolders()
         setAllFolders(folders)
+        
+        // NEU: Tags laden
+        const tags = await client.stub.getAllTags()
+        setAllTags(tags)
       } catch (error) {
-        console.error('Error loading folders:', error)
+        console.error('Error loading folders/tags:', error)
       }
     }
   }
   
   loadFolders()
-}, [showConfig])
+}, [showConfig, mode])
   
   // Schwellwert aktualisieren bei Algorithmus-/Modus-Wechsel
   useEffect(() => {
@@ -343,6 +367,18 @@ useEffect(() => {
     await client.stub.setSetting('additionalFolder', folderId)
   }
 
+  // NEU: Handler für Notebook-Filter
+  const handleNotebookFilterChange = async (notebookId: string) => {
+    setSelectedNotebook(notebookId)
+    await client.stub.setSetting('selectedNotebook', notebookId)
+  }
+
+  // NEU: Handler für Tag-Filter
+  const handleTagFilterChange = async (tagId: string) => {
+    setSelectedTag(tagId)
+    await client.stub.setSetting('selectedTag', tagId)
+  }
+
   const handleExecuteMoves = async () => {
     try {
       if (!targetFolder1 || !targetFolder2) {
@@ -408,8 +444,25 @@ useEffect(() => {
     
 if (mode === 'search') {
   if (searchText) {
-    const parsedKeywords = keywords(searchText)  // IMMER aufrufen!
-    const searchResult = await client.stub.search({ searchText: searchText, titlesOnly })
+    // Suchtext mit Filtern anreichern
+    let enhancedSearchText = searchText
+    
+    if (selectedNotebook) {
+      const notebook = allFolders.find(f => f.id === selectedNotebook)
+      if (notebook) {
+        enhancedSearchText += ` notebook:"${notebook.title}"`
+      }
+    }
+    
+    if (selectedTag) {
+      const tag = allTags.find(t => t.id === selectedTag)
+      if (tag) {
+        enhancedSearchText += ` tag:"${tag.title}"`
+      }
+    }
+    
+    const parsedKeywords = keywords(searchText)  // IMMER aufrufen mit Original-Suchtext für Highlighting
+    const searchResult = await client.stub.search({ searchText: enhancedSearchText, titlesOnly })
     notes = searchResult.notes
         folders = searchResult.folders
 
@@ -465,7 +518,7 @@ if (mode === 'search') {
 
     setSimilarities(sims)
     return { notes, noteListData: [], parsedNotes, folders }
-  }, [mode, searchText, titlesOnly, currentNoteId, similarityAlgorithm, similarityThreshold, limitToFolders, currentFolderId, additionalFolder])
+  }, [mode, searchText, titlesOnly, currentNoteId, similarityAlgorithm, similarityThreshold, limitToFolders, currentFolderId, additionalFolder, selectedNotebook, selectedTag, allFolders, allTags])
 
   const parsedNoteResults = searchResults?.parsedNotes ?? NO_RESULTS
 
@@ -699,6 +752,52 @@ if (mode === 'search') {
             <input type="checkbox" checked={titlesOnly} onChange={handleTitlesOnlyChanged} className="mr-1"></input>
             {mode === 'search' ? 'Nur in Titeln suchen' : 'Nur Titel vergleichen (erste 10 Zeichen + Text zwischen – und ])'}
           </label>
+          
+          {/* NEU: Notizbuch-Filter nur im Search-Modus */}
+          {mode === 'search' && (
+            <label className="flex items-center gap-1">
+              <input 
+                type="checkbox" 
+                checked={!!selectedNotebook} 
+                onChange={(e) => handleNotebookFilterChange(e.target.checked ? (allFolders[0]?.id || '') : '')} 
+              />
+              <span>Notizbuch:</span>
+              {selectedNotebook && (
+                <select 
+                  value={selectedNotebook} 
+                  onChange={(e) => handleNotebookFilterChange(e.target.value)}
+                  className="px-1 py-0.5 border rounded text-sm"
+                >
+                  {allFolders.map(folder => (
+                    <option key={folder.id} value={folder.id}>{folder.title}</option>
+                  ))}
+                </select>
+              )}
+            </label>
+          )}
+          
+          {/* NEU: Tag-Filter nur im Search-Modus */}
+          {mode === 'search' && (
+            <label className="flex items-center gap-1">
+              <input 
+                type="checkbox" 
+                checked={!!selectedTag} 
+                onChange={(e) => handleTagFilterChange(e.target.checked ? (allTags[0]?.id || '') : '')} 
+              />
+              <span>Tag:</span>
+              {selectedTag && (
+                <select 
+                  value={selectedTag} 
+                  onChange={(e) => handleTagFilterChange(e.target.value)}
+                  className="px-1 py-0.5 border rounded text-sm"
+                >
+                  {allTags.map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.title}</option>
+                  ))}
+                </select>
+              )}
+            </label>
+          )}
           
           {/* NEU: Ordner-Limit nur im Similarity-Modus */}
           {mode === 'similarity' && (
