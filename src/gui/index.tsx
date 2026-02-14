@@ -137,6 +137,7 @@ function App() {
 
   // Location processing dialog state
   const [showLocationDialog, setShowLocationDialog] = useState(false)
+  const [locationDialogKey, setLocationDialogKey] = useState(0)
 
 // Settings beim Start laden
 useEffect(() => {
@@ -288,7 +289,9 @@ useEffect(() => {
             break
           }
           case 'OPEN_LOCATION_PROCESSING_DIALOG': {
-            console.log('Opening location processing dialog')
+            console.log('[LocationProcessing] Opening dialog and triggering reload...')
+            // Increment key to force remount and reload data
+            setLocationDialogKey(prev => prev + 1)
             setShowLocationDialog(true)
             break
           }
@@ -1019,6 +1022,7 @@ if (mode === 'search') {
               </button>
             </div>
             <LocationProcessingDialog 
+              key={locationDialogKey}
               client={client} 
               onClose={() => setShowLocationDialog(false)}
             />
