@@ -4,6 +4,7 @@ import type * as FSType from 'fs-extra'
 import { ChannelServer, PostMessageTarget } from './shared/channelRpc'
 import { RpcMethods } from './shared/rpcTypes'
 import { SettingItemType } from 'api/types'
+import https from 'https'
 
 
 export interface SearchQueryOptions {
@@ -215,49 +216,147 @@ function calculateSimilarity(text1: string, text2: string, algorithm: 'jaccard' 
 
 // Location data processing helper functions
 
-// Function to get location data by postal code
-async function getLocationByPlz(plz: string): Promise<PlzApiResponse | null> {
+// Helper function to decode HTML entities
+function decodeHtmlEntities(text: string): string {
+  const entities: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&auml;': 'ä',
+    '&ouml;': 'ö',
+    '&uuml;': 'ü',
+    '&Auml;': 'Ä',
+    '&Ouml;': 'Ö',
+    '&Uuml;': 'Ü',
+    '&szlig;': 'ß',
+    '&euro;': '€',
+    '&nbsp;': ' ',
+  }
+  
+  let decoded = text
+  
+  // Replace known named entities
+  for (const [entity, char] of Object.entries(entities)) {
+    decoded = decoded.split(entity).join(char)
+  }
+  
+  // Replace numeric entities (&#123; or &#xAB;)
+  decoded = decoded.replace(/&#(\d+);/g, (match, dec) => {
+    return String.fromCharCode(parseInt(dec, 10))
+  })
+  
+  decoded = decoded.replace(/&#x([0-9A-Fa-f]+);/g, (match, hex) => {
+    return String.fromCharCode(parseInt(hex, 16))
+  })
+  
+  return decoded
+}
+
+// Helper function for HTTPS GET requests
+function httpsGet(url: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      let data = ''
+      
+      res.on('data', (chunk) => {
+        data += chunk
+      })
+      
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data)
+          resolve(parsed)
+        } catch (error) {
+          reject(new Error(`Failed to parse JSON: ${error.message}`))
+        }
+      })
+    }).on('error', (error) => {
+      reject(error)
+    })
+  })
+}
+
+// Improved function to get location data by postal code
+async function getLocationByPlz(plz: string): Promise<{ name: string; state: string } | null> {
   try {
-    // Validate German postal code format (5 digits)
-    if (!/^\d{5}$/.test(plz)) {
-      console.error(`Invalid PLZ format: ${plz}`)
-      return null
-    }
+    console.log(`[LocationAPI] Searching for PLZ: ${plz}`)
     
-    const response = await fetch(`https://openplzapi.org/de/Localities?postalCode=${plz}`)
-    const data = await response.json()
+    const url = `https://openplzapi.org/de/Localities?postalCode=${plz}`
+    const data = await httpsGet(url)
     
-    if (data && data.length > 0) {
-      return {
-        name: data[0].name,
-        state: data[0].state.name
+    console.log(`[LocationAPI] Response for PLZ ${plz}:`, JSON.stringify(data, null, 2))
+    
+    if (data && Array.isArray(data) && data.length > 0) {
+      const locality = data[0]
+      
+      // Check if all required fields are present
+      if (!locality.name) {
+        console.error(`[LocationAPI] No name field in response for PLZ ${plz}`)
+        return null
       }
+      
+      if (!locality.state || !locality.state.name) {
+        console.error(`[LocationAPI] No state.name field in response for PLZ ${plz}`)
+        return null
+      }
+      
+      const result = {
+        name: locality.name,
+        state: locality.state.name
+      }
+      
+      console.log(`[LocationAPI] Found location for PLZ ${plz}:`, result)
+      return result
     }
+    
+    console.log(`[LocationAPI] No results found for PLZ ${plz}`)
     return null
   } catch (error) {
-    console.error(`Error fetching location for PLZ ${plz}:`, error)
+    console.error(`[LocationAPI] Error fetching location for PLZ ${plz}:`, error)
     return null
   }
 }
 
-// Function to get state by city name
+// Improved function to get state by city name
 async function getStateByCity(cityName: string): Promise<string | null> {
   try {
-    const response = await fetch(`https://openplzapi.org/de/Localities?name=${encodeURIComponent(cityName)}`)
-    const data = await response.json()
+    console.log(`[LocationAPI] Searching for city: ${cityName}`)
     
-    if (data && data.length > 0) {
-      return data[0].state.name
+    // URL-encode the city name for correct transmission
+    const encodedCity = encodeURIComponent(cityName)
+    const url = `https://openplzapi.org/de/Localities?name=${encodedCity}`
+    const data = await httpsGet(url)
+    
+    console.log(`[LocationAPI] Response for city ${cityName}:`, JSON.stringify(data, null, 2))
+    
+    if (data && Array.isArray(data) && data.length > 0) {
+      // Take the first result
+      const locality = data[0]
+      
+      if (!locality.state || !locality.state.name) {
+        console.error(`[LocationAPI] No state.name field in response for city ${cityName}`)
+        return null
+      }
+      
+      const stateName = locality.state.name
+      
+      console.log(`[LocationAPI] Found state for city ${cityName}: ${stateName}`)
+      return stateName
     }
+    
+    console.log(`[LocationAPI] No results found for city ${cityName}`)
     return null
   } catch (error) {
-    console.error(`Error fetching state for city ${cityName}:`, error)
+    console.error(`[LocationAPI] Error fetching state for city ${cityName}:`, error)
     return null
   }
 }
 
-// Function to parse MusliStart line
-function parseMusliLine(noteBody: string): { line: string; sections: string[] } | null {
+// Updated function to parse MusliStart line
+function parseMusliLine(noteBody: string): { line: string; sections: string[]; decodedLine: string } | null {
   const musliRegex = /MusliStart-(.+?)-MusliEnde/
   const match = noteBody.match(musliRegex)
   
@@ -265,11 +364,20 @@ function parseMusliLine(noteBody: string): { line: string; sections: string[] } 
     return null
   }
   
-  const line = match[0]
+  const line = match[0]  // Original HTML-encoded line
   const content = match[1]
-  const sections = content.split(';')
   
-  return { line, sections }
+  // IMPORTANT: Decode HTML entities BEFORE we split
+  const decodedContent = decodeHtmlEntities(content)
+  const decodedLine = `MusliStart-${decodedContent}-MusliEnde`
+  
+  const sections = decodedContent.split(';')
+  
+  return { 
+    line,           // Original for later replace
+    sections,       // Decoded sections
+    decodedLine     // Decoded line for preview
+  }
 }
 
 const handler = {
@@ -488,28 +596,38 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     // Maximum 100 notes
     const limitedNoteIds = noteIds.slice(0, 100)
     
+    console.log(`[LocationProcessing] Processing ${limitedNoteIds.length} notes`)
+    
     for (const noteId of limitedNoteIds) {
       try {
         const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body'] })
         const parsed = parseMusliLine(note.body)
         
         if (!parsed) {
-          // No MusliStart line found
+          console.log(`[LocationProcessing] Note ${noteId} (${note.title}): No MusliStart line found`)
           continue
         }
         
-        const { line, sections } = parsed
+        const { line, sections, decodedLine } = parsed
+        
+        console.log(`[LocationProcessing] Note ${noteId} (${note.title}): Found MusliStart line with ${sections.length} sections`)
+        console.log(`[LocationProcessing] Original: ${line}`)
+        console.log(`[LocationProcessing] Decoded: ${decodedLine}`)
+        console.log(`[LocationProcessing] Sections:`, sections)
         
         // Check if enough sections (minimum 11)
         if (sections.length < 11) {
+          const errorMsg = `Nicht genügend Abschnitte in der MusliStart-Zeile (${sections.length} statt mindestens 11)`
+          console.error(`[LocationProcessing] ${errorMsg}`)
+          
           changes.push({
             noteId: note.id,
             noteTitle: note.title,
-            originalLine: line,
-            newLine: line,
+            originalLine: decodedLine,  // Show decoded line
+            newLine: decodedLine,
             tagsToAdd: [],
             changeType: 'error',
-            errorMessage: 'Nicht genügend Abschnitte in der MusliStart-Zeile'
+            errorMessage: errorMsg
           })
           continue
         }
@@ -518,12 +636,18 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
         const tenthSection = sections[9]?.trim()  // Index 9 = 10th section
         const eleventhSection = sections[10]?.trim()  // Index 10 = 11th section
         
+        console.log(`[LocationProcessing] 9th section (index 8): "${ninthSection}"`)
+        console.log(`[LocationProcessing] 10th section (index 9): "${tenthSection}"`)
+        console.log(`[LocationProcessing] 11th section (index 10): "${eleventhSection}"`)
+        
         let newSections = [...sections]
         let tagsToAdd: string[] = []
         let changeType: any = 'no-change'
         let errorMessage: string | undefined
         
         if (ninthSection === 'plz') {
+          console.log(`[LocationProcessing] Processing PLZ mode`)
+          
           // Case 1: PLZ -> determine city name
           const plz = tenthSection
           const state = eleventhSection
@@ -531,16 +655,18 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           if (!plz) {
             errorMessage = '10. Abschnitt (PLZ) fehlt'
             changeType = 'error'
-          } else if (!state) {
-            errorMessage = '11. Abschnitt (Bundesland) fehlt'
-            changeType = 'error'
+            console.error(`[LocationProcessing] ${errorMessage}`)
           } else if (!GERMAN_STATES.includes(state)) {
             errorMessage = `11. Abschnitt enthält kein gültiges Bundesland: "${state}"`
             changeType = 'error'
+            console.error(`[LocationProcessing] ${errorMessage}`)
+            console.log(`[LocationProcessing] Valid states are:`, GERMAN_STATES)
           } else {
+            console.log(`[LocationProcessing] Fetching location for PLZ ${plz}`)
             const locationData = await getLocationByPlz(plz)
             
             if (locationData) {
+              console.log(`[LocationProcessing] Found location:`, locationData)
               newSections[8] = locationData.name  // Replace PLZ with city name
               tagsToAdd.push(`Ort:${locationData.name}`)
               tagsToAdd.push(`BL:${state}`)
@@ -548,14 +674,19 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
             } else {
               errorMessage = `Konnte keinen Ort für PLZ ${plz} finden`
               changeType = 'error'
+              console.error(`[LocationProcessing] ${errorMessage}`)
             }
           }
         } else if (ninthSection && ninthSection !== 'plz') {
+          console.log(`[LocationProcessing] Processing city-to-state mode`)
+          
           // Case 2: City name -> determine state
           const cityName = ninthSection
+          console.log(`[LocationProcessing] Fetching state for city ${cityName}`)
           const state = await getStateByCity(cityName)
           
           if (state) {
+            console.log(`[LocationProcessing] Found state: ${state}`)
             newSections[10] = state  // Insert state in 11th section
             tagsToAdd.push(`Ort:${cityName}`)
             tagsToAdd.push(`BL:${state}`)
@@ -563,26 +694,34 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           } else {
             errorMessage = `Konnte kein Bundesland für Ort "${cityName}" finden`
             changeType = 'error'
+            console.error(`[LocationProcessing] ${errorMessage}`)
           }
         }
         
-        // Only reconstruct newLine if there's an actual change
-        const newLine = (changeType !== 'error' && changeType !== 'no-change')
-          ? `MusliStart-${newSections.join(';')}-MusliEnde`
-          : line
+        // Create new line with decoded content
+        const newDecodedLine = `MusliStart-${newSections.join(';')}-MusliEnde`
+        
+        // For the replace in body we need to use the original HTML line
+        const newLine = newDecodedLine  // Will be used later
+        
+        console.log(`[LocationProcessing] Change type: ${changeType}`)
+        console.log(`[LocationProcessing] New line: ${newDecodedLine}`)
+        console.log(`[LocationProcessing] Tags to add:`, tagsToAdd)
         
         changes.push({
           noteId: note.id,
           noteTitle: note.title,
-          originalLine: line,
-          newLine: newLine,
+          originalLine: decodedLine,  // Show decoded version
+          newLine: newDecodedLine,     // Show decoded version
           tagsToAdd: tagsToAdd,
           changeType: changeType,
-          errorMessage: errorMessage
+          errorMessage: errorMessage,
+          _originalHtmlLine: line,     // Save original for replace
+          _newHtmlLine: newLine         // Will be encoded later if needed
         })
         
       } catch (error) {
-        console.error(`Error processing note ${noteId}:`, error)
+        console.error(`[LocationProcessing] Error processing note ${noteId}:`, error)
         changes.push({
           noteId: noteId,
           noteTitle: 'Fehler beim Laden',
@@ -595,6 +734,7 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
       }
     }
     
+    console.log(`[LocationProcessing] Finished processing. Total changes: ${changes.length}`)
     return changes
   },
 
@@ -617,6 +757,7 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     // Create missing tags
     for (const tagName of allTagNames) {
       if (!existingTagsMap.has(tagName)) {
+        console.log(`[LocationProcessing] Creating new tag "${tagName}"`)
         const newTag = await joplin.data.post(['tags'], null, { title: tagName })
         existingTagsMap.set(tagName, newTag.id)
       }
@@ -629,23 +770,44 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
       }
       
       try {
+        console.log(`[LocationProcessing] Applying changes to note ${change.noteId}`)
+        
         // 1. Update note body
         const note = await joplin.data.get(['notes', change.noteId], { fields: ['body'] })
-        const newBody = note.body.replace(change.originalLine, change.newLine)
         
+        // Use the original HTML line for the replace
+        const originalHtmlLine = (change as any)._originalHtmlLine || change.originalLine
+        const newLine = change.newLine
+        
+        // Replace the original line with the new (decoded) line
+        const newBody = note.body.replace(originalHtmlLine, newLine)
+        
+        console.log(`[LocationProcessing] Updating note body`)
         await joplin.data.put(['notes', change.noteId], null, { body: newBody })
         
         // 2. Add tags
+        console.log(`[LocationProcessing] Adding ${change.tagsToAdd.length} tags`)
         for (const tagName of change.tagsToAdd) {
           const tagId = existingTagsMap.get(tagName)
           if (tagId) {
-            // Link tag with note
-            await joplin.data.post(['tags', tagId, 'notes'], null, { id: change.noteId })
+            // Check if note already has this tag
+            const noteTags = await joplin.data.get(['notes', change.noteId, 'tags'])
+            const hasTag = noteTags.items.some((t: any) => t.id === tagId)
+            
+            if (!hasTag) {
+              // Link tag with note
+              console.log(`[LocationProcessing] Linking tag "${tagName}" to note`)
+              await joplin.data.post(['tags', tagId, 'notes'], null, { id: change.noteId })
+            } else {
+              console.log(`[LocationProcessing] Note already has tag "${tagName}"`)
+            }
           }
         }
         
+        console.log(`[LocationProcessing] Successfully processed note ${change.noteId}`)
+        
       } catch (error) {
-        console.error(`Error applying changes to note ${change.noteId}:`, error)
+        console.error(`[LocationProcessing] Error applying changes to note ${change.noteId}:`, error)
       }
     }
   },
