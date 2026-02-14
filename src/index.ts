@@ -654,7 +654,13 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
             newLine: decodedLine,
             tagsToAdd: [],
             changeType: 'error',
-            errorMessage: errorMsg
+            errorMessage: errorMsg,
+            section9Before: sections[8] || '',
+            section10Before: sections[9] || '',
+            section11Before: sections[10] || '',
+            section9After: sections[8] || '',
+            section10After: sections[9] || '',
+            section11After: sections[10] || '',
           })
           continue
         }
@@ -695,8 +701,10 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
             if (locationData) {
               console.log(`[LocationProcessing] Found location:`, locationData)
               newSections[8] = locationData.name  // Replace PLZ with city name
-              tagsToAdd.push(`Ort:${locationData.name}`)
-              tagsToAdd.push(`BL:${state}`)
+              const cityTag = `ort:${locationData.name.toLowerCase().replace(/\s+/g, '')}`
+              const stateTag = `bl:${state.toLowerCase().replace(/\s+/g, '')}`
+              tagsToAdd.push(cityTag)
+              tagsToAdd.push(stateTag)
               changeType = 'plz-to-city'
             } else {
               errorMessage = `Konnte keinen Ort für PLZ ${plz} finden`
@@ -715,8 +723,10 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           if (state) {
             console.log(`[LocationProcessing] Found state: ${state}`)
             newSections[10] = state  // Insert state in 11th section
-            tagsToAdd.push(`Ort:${cityName}`)
-            tagsToAdd.push(`BL:${state}`)
+            const cityTag = `ort:${cityName.toLowerCase().replace(/\s+/g, '')}`
+            const stateTag = `bl:${state.toLowerCase().replace(/\s+/g, '')}`
+            tagsToAdd.push(cityTag)
+            tagsToAdd.push(stateTag)
             changeType = 'city-to-state'
           } else {
             errorMessage = `Konnte kein Bundesland für Ort "${cityName}" finden`
@@ -735,6 +745,14 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
         console.log(`[LocationProcessing] New line: ${newDecodedLine}`)
         console.log(`[LocationProcessing] Tags to add:`, tagsToAdd)
         
+        // Extract section data for compact display
+        const section9Before = sections[8] || ''
+        const section10Before = sections[9] || ''
+        const section11Before = sections[10] || ''
+        const section9After = newSections[8] || ''
+        const section10After = newSections[9] || ''
+        const section11After = newSections[10] || ''
+        
         changes.push({
           noteId: note.id,
           noteTitle: note.title,
@@ -744,7 +762,13 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           changeType: changeType,
           errorMessage: errorMessage,
           _originalHtmlLine: line,     // Save original for replace
-          _newHtmlLine: newLine         // Will be encoded later if needed
+          _newHtmlLine: newLine,        // Will be encoded later if needed
+          section9Before,
+          section10Before,
+          section11Before,
+          section9After,
+          section10After,
+          section11After,
         })
         
       } catch (error) {
@@ -757,7 +781,13 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           newLine: '',
           tagsToAdd: [],
           changeType: 'error',
-          errorMessage: error.message || 'Unbekannter Fehler'
+          errorMessage: error.message || 'Unbekannter Fehler',
+          section9Before: '',
+          section10Before: '',
+          section11Before: '',
+          section9After: '',
+          section10After: '',
+          section11After: '',
         })
       }
     }
