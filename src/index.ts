@@ -327,8 +327,25 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
 
   getAllTags: async (): Promise<any[]> => {
     try {
-      const tagsResult = await joplin.data.get(['tags'], {})
-      return tagsResult.items
+      let allTags: any[] = []
+      let page = 1
+      let hasMore = true
+      
+      while (hasMore) {
+        const tagsResult = await joplin.data.get(['tags'], {
+          page: page,
+          limit: 100
+        })
+        
+        allTags = allTags.concat(tagsResult.items)
+        hasMore = tagsResult.has_more
+        
+        if (hasMore) {
+          page++
+        }
+      }
+      
+      return allTags
     } catch (error) {
       console.error('Error getting tags:', error)
       return []

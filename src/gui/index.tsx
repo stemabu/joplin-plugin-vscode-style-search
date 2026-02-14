@@ -107,6 +107,8 @@ function App() {
   // NEU: Notebook- und Tag-Filter
   const [selectedNotebook, setSelectedNotebook] = useState<string>('')
   const [selectedTag, setSelectedTag] = useState<string>('')
+  const [notebookFilterActive, setNotebookFilterActive] = useState<boolean>(false)
+  const [tagFilterActive, setTagFilterActive] = useState<boolean>(false)
   const [allTags, setAllTags] = useState<Tag[]>([])
   
   // Ähnlichkeits-States
@@ -142,7 +144,9 @@ useEffect(() => {
       
       // NEU: Tags laden
       const tags = await client.stub.getAllTags()
-      setAllTags(tags)
+      // NEU: Alphabetisch sortieren
+      const sortedTags = tags.sort((a, b) => a.title.localeCompare(b.title))
+      setAllTags(sortedTags)
       
       // Schwellwerte laden
       const loadedThresholds = {
@@ -174,8 +178,12 @@ useEffect(() => {
       // NEU: Filter-Settings laden
       const savedNotebook = await client.stub.getSetting('selectedNotebook')
       const savedTag = await client.stub.getSetting('selectedTag')
+      const savedNotebookFilterActive = await client.stub.getSetting('notebookFilterActive')
+      const savedTagFilterActive = await client.stub.getSetting('tagFilterActive')
       if (savedNotebook !== undefined && savedNotebook !== null) setSelectedNotebook(savedNotebook)
       if (savedTag !== undefined && savedTag !== null) setSelectedTag(savedTag)
+      if (savedNotebookFilterActive !== undefined) setNotebookFilterActive(savedNotebookFilterActive)
+      if (savedTagFilterActive !== undefined) setTagFilterActive(savedTagFilterActive)
       
       // Aktuellen Schwellwert setzen
       const key = `${similarityAlgorithm}_${titlesOnly ? 'title' : 'full'}` as keyof typeof loadedThresholds
@@ -205,7 +213,9 @@ useEffect(() => {
         
         // NEU: Tags laden
         const tags = await client.stub.getAllTags()
-        setAllTags(tags)
+        // NEU: Alphabetisch sortieren
+        const sortedTags = tags.sort((a, b) => a.title.localeCompare(b.title))
+        setAllTags(sortedTags)
       } catch (error) {
         console.error('Error loading folders/tags:', error)
       }
@@ -400,6 +410,18 @@ useEffect(() => {
     await client.stub.setSetting('selectedTag', tagId)
   }
 
+  // NEU: Handler für Notebook-Filter-Aktivierung
+  const handleNotebookFilterActiveChange = async (active: boolean) => {
+    setNotebookFilterActive(active)
+    await client.stub.setSetting('notebookFilterActive', active)
+  }
+
+  // NEU: Handler für Tag-Filter-Aktivierung
+  const handleTagFilterActiveChange = async (active: boolean) => {
+    setTagFilterActive(active)
+    await client.stub.setSetting('tagFilterActive', active)
+  }
+
   const handleExecuteMoves = async () => {
     try {
       if (!targetFolder1 || !targetFolder2) {
@@ -468,14 +490,16 @@ if (mode === 'search') {
     // Suchtext mit Filtern anreichern
     let enhancedSearchText = searchText
     
-    if (selectedNotebook) {
+    // Nur hinzufügen wenn Checkbox AKTIV ist
+    if (notebookFilterActive && selectedNotebook) {
       const notebook = allFolders.find(f => f.id === selectedNotebook)
       if (notebook) {
         enhancedSearchText += ` notebook:"${notebook.title}"`
       }
     }
     
-    if (selectedTag) {
+    // Nur hinzufügen wenn Checkbox AKTIV ist
+    if (tagFilterActive && selectedTag) {
       const tag = allTags.find(t => t.id === selectedTag)
       if (tag) {
         enhancedSearchText += ` tag:"${tag.title}"`
@@ -779,22 +803,22 @@ if (mode === 'search') {
             <label className="flex items-center gap-1">
               <input 
                 type="checkbox" 
-                checked={!!selectedNotebook} 
-                onChange={(e) => handleNotebookFilterChange(e.target.checked ? (allFolders[0]?.id || '') : '')} 
-                disabled={allFolders.length === 0}
+                checked={notebookFilterActive} 
+                onChange={(e) => handleNotebookFilterActiveChange(e.target.checked)} 
+                className="mr-1"
               />
               <span>Notizbuch:</span>
-              {selectedNotebook && (
-                <select 
-                  value={selectedNotebook} 
-                  onChange={(e) => handleNotebookFilterChange(e.target.value)}
-                  className="px-1 py-0.5 border rounded text-sm"
-                >
-                  {allFolders.map(folder => (
-                    <option key={folder.id} value={folder.id}>{folder.title}</option>
-                  ))}
-                </select>
-              )}
+              <select 
+                value={selectedNotebook} 
+                onChange={(e) => handleNotebookFilterChange(e.target.value)}
+                className="px-2 py-0.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 bg-green-100 dark:bg-green-900 dark:bg-opacity-20 w-64"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value="">-- Kein Notizbuch --</option>
+                {allFolders.map(folder => (
+                  <option key={folder.id} value={folder.id}>{folder.title}</option>
+                ))}
+              </select>
             </label>
           )}
           
@@ -803,22 +827,24 @@ if (mode === 'search') {
             <label className="flex items-center gap-1">
               <input 
                 type="checkbox" 
-                checked={!!selectedTag} 
-                onChange={(e) => handleTagFilterChange(e.target.checked ? (allTags[0]?.id || '') : '')} 
-                disabled={allTags.length === 0}
+                checked={tagFilterActive} 
+                onChange={(e) => handleTagFilterActiveChange(e.target.checked)} 
+                className="mr-1"
               />
               <span>Tag:</span>
-              {selectedTag && (
-                <select 
-                  value={selectedTag} 
-                  onChange={(e) => handleTagFilterChange(e.target.value)}
-                  className="px-1 py-0.5 border rounded text-sm"
-                >
-                  {allTags.map(tag => (
-                    <option key={tag.id} value={tag.id}>{tag.title}</option>
-                  ))}
-                </select>
-              )}
+              <select 
+                value={selectedTag} 
+                onChange={(e) => handleTagFilterChange(e.target.value)}
+                className="px-2 py-0.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 bg-fuchsia-100 dark:bg-fuchsia-900 dark:bg-opacity-20 max-w-xs truncate"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value="">-- Kein Tag --</option>
+                {allTags.map(tag => (
+                  <option key={tag.id} value={tag.id} className="truncate">
+                    {tag.title.length > 30 ? tag.title.substring(0, 30) + '...' : tag.title}
+                  </option>
+                ))}
+              </select>
             </label>
           )}
           
