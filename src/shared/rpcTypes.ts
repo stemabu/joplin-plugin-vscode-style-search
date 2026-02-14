@@ -9,5 +9,6 @@ export interface RpcMethods {
   getSelectedText(): Promise<string | null>
   getAllFolders(): Promise<any[]>  // GEÄNDERT
   getAllTags(): Promise<any[]>  // NEU
+  getNoteTags(noteId: string): Promise<any[]>  // NEU
   moveNotes(moves: { noteId: string; folderId: string }[]): Promise<void>  // GEÄNDERT
 }

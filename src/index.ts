@@ -19,6 +19,11 @@ export interface SimilarityQueryOptions {
   threshold: number
 }
 
+export interface Tag {
+  id: string
+  title: string
+}
+
 // Funktion für Extraktion von rechts
 function extractFromTitleRight(title: string, startDelim: string, endDelim: string): string | null {
   const endIndex = title.lastIndexOf(endDelim)
@@ -306,10 +311,29 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     
     similarNotes.sort((a, b) => (similarities[b.id] || 0) - (similarities[a.id] || 0))
     
+    // NEU: Tags für ähnliche Notizen laden
+    const similarNotesWithTags = await Promise.all(
+      similarNotes.map(async (note) => {
+        try {
+          const tagsResult = await joplin.data.get(['notes', note.id, 'tags'])
+          return {
+            ...note,
+            tags: tagsResult.items || []
+          }
+        } catch (error) {
+          console.error(`Error loading tags for note ${note.id}:`, error)
+          return {
+            ...note,
+            tags: []
+          }
+        }
+      })
+    )
+    
     const allFoldersResult: SearchResponse<Folder> = await joplin.data.get(['folders'], {})
     
     return {
-      notes: similarNotes,
+      notes: similarNotesWithTags,
       folders: allFoldersResult.items,
       similarities
     }
@@ -348,6 +372,16 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
       return allTags
     } catch (error) {
       console.error('Error getting tags:', error)
+      return []
+    }
+  },
+
+  getNoteTags: async (noteId: string): Promise<Tag[]> => {
+    try {
+      const tagsResult = await joplin.data.get(['notes', noteId, 'tags'])
+      return tagsResult.items || []
+    } catch (error) {
+      console.error(`Error getting tags for note ${noteId}:`, error)
       return []
     }
   },
@@ -391,6 +425,7 @@ export interface Note {
   created_time: number
   updated_time: number
   source: string
+  tags?: Tag[]
 }
 
 export interface Folder {
@@ -454,10 +489,29 @@ async function searchNotes(queryOptions: SearchQueryOptions): Promise<NotesSearc
     }
   }
 
+  // NEU: Tags für jede Notiz laden
+  const notesWithTags = await Promise.all(
+    allNotes.map(async (note) => {
+      try {
+        const tagsResult = await joplin.data.get(['notes', note.id, 'tags'])
+        return {
+          ...note,
+          tags: tagsResult.items || []
+        }
+      } catch (error) {
+        console.error(`Error loading tags for note ${note.id}:`, error)
+        return {
+          ...note,
+          tags: []
+        }
+      }
+    })
+  )
+
   const allFoldersResult: SearchResponse<Folder> = await joplin.data.get(['folders'], {})
 
   return {
-    notes: allNotes,
+    notes: notesWithTags,
     folders: allFoldersResult.items,
   }
 }
