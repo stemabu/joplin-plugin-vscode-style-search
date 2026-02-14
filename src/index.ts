@@ -312,23 +312,7 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     similarNotes.sort((a, b) => (similarities[b.id] || 0) - (similarities[a.id] || 0))
     
     // NEU: Tags für ähnliche Notizen laden
-    const similarNotesWithTags = await Promise.all(
-      similarNotes.map(async (note) => {
-        try {
-          const tagsResult = await joplin.data.get(['notes', note.id, 'tags'])
-          return {
-            ...note,
-            tags: tagsResult.items || []
-          }
-        } catch (error) {
-          console.error(`Error loading tags for note ${note.id}:`, error)
-          return {
-            ...note,
-            tags: []
-          }
-        }
-      })
-    )
+    const similarNotesWithTags = await loadTagsForNotes(similarNotes)
     
     const allFoldersResult: SearchResponse<Folder> = await joplin.data.get(['folders'], {})
     
@@ -444,6 +428,27 @@ interface NotesSearchResults {
   folders: Folder[]
 }
 
+// Helper function to load tags for notes
+async function loadTagsForNotes(notes: Note[]): Promise<Note[]> {
+  return Promise.all(
+    notes.map(async (note) => {
+      try {
+        const tagsResult = await joplin.data.get(['notes', note.id, 'tags'])
+        return {
+          ...note,
+          tags: tagsResult.items || []
+        }
+      } catch (error) {
+        console.error(`Error loading tags for note ${note.id}:`, error)
+        return {
+          ...note,
+          tags: []
+        }
+      }
+    })
+  )
+}
+
 async function searchNotes(queryOptions: SearchQueryOptions): Promise<NotesSearchResults> {
   let hasMore = false
   let allNotes: Note[] = []
@@ -490,23 +495,7 @@ async function searchNotes(queryOptions: SearchQueryOptions): Promise<NotesSearc
   }
 
   // NEU: Tags für jede Notiz laden
-  const notesWithTags = await Promise.all(
-    allNotes.map(async (note) => {
-      try {
-        const tagsResult = await joplin.data.get(['notes', note.id, 'tags'])
-        return {
-          ...note,
-          tags: tagsResult.items || []
-        }
-      } catch (error) {
-        console.error(`Error loading tags for note ${note.id}:`, error)
-        return {
-          ...note,
-          tags: []
-        }
-      }
-    })
-  )
+  const notesWithTags = await loadTagsForNotes(allNotes)
 
   const allFoldersResult: SearchResponse<Folder> = await joplin.data.get(['folders'], {})
 
