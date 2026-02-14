@@ -800,77 +800,117 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
   },
 
   applyLocationChanges: async (changes: any[]): Promise<void> => {
-    // Collect all unique tag names first
-    const allTagNames = new Set<string>()
-    for (const change of changes) {
-      if (change.changeType !== 'error' && change.changeType !== 'no-change') {
-        change.tagsToAdd.forEach((tag: string) => allTagNames.add(tag))
-      }
-    }
+    console.log(`[LocationProcessing] ============================================`)
+    console.log(`[LocationProcessing] START: applyLocationChanges`)
+    console.log(`[LocationProcessing] Applying ${changes.length} changes`)
     
-    // Fetch all existing tags once
-    const existingTagsMap = new Map<string, string>()
-    const allTags = await joplin.data.get(['tags'])
-    for (const tag of allTags.items) {
-      existingTagsMap.set(tag.title, tag.id)
-    }
-    
-    // Create missing tags
-    for (const tagName of allTagNames) {
-      if (!existingTagsMap.has(tagName)) {
-        console.log(`[LocationProcessing] Creating new tag "${tagName}"`)
-        const newTag = await joplin.data.post(['tags'], null, { title: tagName })
-        existingTagsMap.set(tagName, newTag.id)
-      }
-    }
-    
-    // Now process each change
-    for (const change of changes) {
+    for (let i = 0; i < changes.length; i++) {
+      const change = changes[i]
+      
+      console.log(`[LocationProcessing] --------------------------------------------`)
+      console.log(`[LocationProcessing] Processing change ${i + 1}/${changes.length}`)
+      console.log(`[LocationProcessing] Note ID: ${change.noteId}`)
+      console.log(`[LocationProcessing] Change type: ${change.changeType}`)
+      
       if (change.changeType === 'error' || change.changeType === 'no-change') {
+        console.log(`[LocationProcessing] Skipping (type: ${change.changeType})`)
         continue
       }
       
       try {
-        console.log(`[LocationProcessing] Applying changes to note ${change.noteId}`)
+        console.log(`[LocationProcessing] Fetching note ${change.noteId}`)
         
-        // 1. Update note body
+        // 1. Notiz-Body aktualisieren
         const note = await joplin.data.get(['notes', change.noteId], { fields: ['body'] })
+        console.log(`[LocationProcessing] Note fetched, body length: ${note.body?.length}`)
         
-        // Use the original HTML line for the replace
+        // Verwende die Original-HTML-Zeile für den Replace
         const originalHtmlLine = (change as any)._originalHtmlLine || change.originalLine
         const newLine = change.newLine
         
-        // Replace the original line with the new (decoded) line
+        console.log(`[LocationProcessing] Replacing line in body...`)
+        console.log(`[LocationProcessing] Original line: ${originalHtmlLine.substring(0, 100)}...`)
+        console.log(`[LocationProcessing] New line: ${newLine.substring(0, 100)}...`)
+        
+        // Ersetze die Original-Zeile durch die neue (dekodierte) Zeile
         const newBody = note.body.replace(originalHtmlLine, newLine)
         
-        console.log(`[LocationProcessing] Updating note body`)
-        await joplin.data.put(['notes', change.noteId], null, { body: newBody })
+        if (newBody === note.body) {
+          console.warn(`[LocationProcessing] WARNING: Body was not changed! Original line might not exist in body.`)
+        } else {
+          console.log(`[LocationProcessing] Body updated successfully`)
+        }
         
-        // 2. Add tags
-        console.log(`[LocationProcessing] Adding ${change.tagsToAdd.length} tags`)
+        console.log(`[LocationProcessing] Saving updated note...`)
+        await joplin.data.put(['notes', change.noteId], null, { body: newBody })
+        console.log(`[LocationProcessing] Note saved`)
+        
+        // 2. Tags hinzufügen
+        console.log(`[LocationProcessing] Adding ${change.tagsToAdd.length} tags: ${JSON.stringify(change.tagsToAdd)}`)
+        
         for (const tagName of change.tagsToAdd) {
-          const tagId = existingTagsMap.get(tagName)
-          if (tagId) {
-            // Check if note already has this tag
+          try {
+            console.log(`[LocationProcessing] Processing tag: "${tagName}"`)
+            
+            // Prüfe ob Tag bereits existiert
+            console.log(`[LocationProcessing] Fetching all tags...`)
+            const allTags = await joplin.data.get(['tags'])
+            console.log(`[LocationProcessing] Total tags in system: ${allTags.items?.length || 0}`)
+            
+            const existingTag = allTags.items.find((t: any) => t.title === tagName)
+            
+            let tagId: string
+            
+            if (existingTag) {
+              console.log(`[LocationProcessing] Tag "${tagName}" already exists with ID: ${existingTag.id}`)
+              tagId = existingTag.id
+            } else {
+              // Tag erstellen
+              console.log(`[LocationProcessing] Creating new tag "${tagName}"`)
+              const newTag = await joplin.data.post(['tags'], null, { title: tagName })
+              tagId = newTag.id
+              console.log(`[LocationProcessing] Created tag with ID: ${tagId}`)
+            }
+            
+            // Prüfe ob Notiz bereits dieses Tag hat
+            console.log(`[LocationProcessing] Checking if note already has tag...`)
             const noteTags = await joplin.data.get(['notes', change.noteId, 'tags'])
             const hasTag = noteTags.items.some((t: any) => t.id === tagId)
             
             if (!hasTag) {
-              // Link tag with note
-              console.log(`[LocationProcessing] Linking tag "${tagName}" to note`)
+              // Tag mit Notiz verknüpfen
+              console.log(`[LocationProcessing] Linking tag "${tagName}" (${tagId}) to note`)
               await joplin.data.post(['tags', tagId, 'notes'], null, { id: change.noteId })
+              console.log(`[LocationProcessing] Tag linked successfully`)
             } else {
               console.log(`[LocationProcessing] Note already has tag "${tagName}"`)
             }
+            
+          } catch (tagError) {
+            console.error(`[LocationProcessing] ERROR adding tag "${tagName}":`, tagError)
+            console.error(`[LocationProcessing] Tag error stack:`, tagError.stack)
+            // Nicht abbrechen, weitermachen mit nächstem Tag
           }
         }
         
-        console.log(`[LocationProcessing] Successfully processed note ${change.noteId}`)
+        console.log(`[LocationProcessing] ✓ Successfully processed note ${change.noteId}`)
         
       } catch (error) {
-        console.error(`[LocationProcessing] Error applying changes to note ${change.noteId}:`, error)
+        console.error(`[LocationProcessing] ============================================`)
+        console.error(`[LocationProcessing] ERROR applying changes to note ${change.noteId}:`, error)
+        console.error(`[LocationProcessing] Error message: ${error.message}`)
+        console.error(`[LocationProcessing] Error stack:`, error.stack)
+        console.error(`[LocationProcessing] Error details:`, JSON.stringify(error, null, 2))
+        console.error(`[LocationProcessing] ============================================`)
+        
+        // Werfe den Fehler, damit das Frontend ihn sieht
+        throw new Error(`Fehler bei Notiz "${change.noteTitle}": ${error.message}`)
       }
     }
+    
+    console.log(`[LocationProcessing] ============================================`)
+    console.log(`[LocationProcessing] FINISHED: All changes applied successfully`)
+    console.log(`[LocationProcessing] ============================================`)
   },
 }
 
