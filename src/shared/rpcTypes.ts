@@ -6,6 +6,8 @@ export interface LocationChange {
   tagsToAdd: string[]
   changeType: 'plz-to-city' | 'city-to-state' | 'no-change' | 'error'
   errorMessage?: string
+  _originalHtmlLine?: string  // Internes Feld
+  _newHtmlLine?: string        // Internes Feld
 }
 
 export interface RpcMethods {
