@@ -100,7 +100,7 @@ if (titlesOnly || fragmentMatches.length || parsedKeywords.length === 0) {
       title: note.title,
       updated_time: note.updated_time,
       folderTitle,
-      matchCount: fragmentMatches.length,
+      matchCount: titlesOnly ? 1 : fragmentMatches.length,
     }
 
     const fragmentItems = fragmentMatches.map((match, index) => {
