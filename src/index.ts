@@ -312,15 +312,15 @@ async function getLocationByPlz(plz: string): Promise<{ name: string; state: str
         return null
       }
       
-      if (!locality.state || !locality.state.name) {
-        console.error(`[LocationAPI] No state.name field in response for PLZ ${plz}`)
+     if (!locality.federalState || !locality.federalState.name) {
+        console.error(`[LocationAPI] No federalState.name field in response for PLZ ${plz}`)
         return null
-      }
-      
-      const result = {
-        name: locality.name,
-        state: locality.state.name
-      }
+	 }
+
+     const result = {
+         name: locality.name,
+         state: locality.federalState.name
+     }
       
       console.log(`[LocationAPI] Found location for PLZ ${plz}:`, result)
       return result
@@ -350,12 +350,12 @@ async function getStateByCity(cityName: string): Promise<string | null> {
       // Take the first result
       const locality = data[0]
       
-      if (!locality.state || !locality.state.name) {
-        console.error(`[LocationAPI] No state.name field in response for city ${cityName}`)
-        return null
+      if (!locality.federalState || !locality.federalState.name) {
+         console.error(`[LocationAPI] No federalState.name field in response for city ${cityName}`)
+         return null
       }
-      
-      const stateName = locality.state.name
+
+      const stateName = locality.federalState.name
       
       console.log(`[LocationAPI] Found state for city ${cityName}: ${stateName}`)
       return stateName
