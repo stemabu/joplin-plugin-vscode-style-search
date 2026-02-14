@@ -1013,11 +1013,15 @@ if (mode === 'search') {
               <button
                 onClick={() => setShowLocationDialog(false)}
                 className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                aria-label="Dialog schließen"
               >
                 ✕
               </button>
             </div>
-            <LocationProcessingDialog client={client} />
+            <LocationProcessingDialog 
+              client={client} 
+              onClose={() => setShowLocationDialog(false)}
+            />
           </div>
         </div>
       )}

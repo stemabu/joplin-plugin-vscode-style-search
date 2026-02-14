@@ -531,6 +531,9 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           if (!plz) {
             errorMessage = '10. Abschnitt (PLZ) fehlt'
             changeType = 'error'
+          } else if (!state) {
+            errorMessage = '11. Abschnitt (Bundesland) fehlt'
+            changeType = 'error'
           } else if (!GERMAN_STATES.includes(state)) {
             errorMessage = `11. Abschnitt enthält kein gültiges Bundesland: "${state}"`
             changeType = 'error'

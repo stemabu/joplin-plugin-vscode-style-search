@@ -13,9 +13,10 @@ interface LocationChange {
 
 interface LocationProcessingDialogProps {
   client: ChannelClient<any>
+  onClose: () => void
 }
 
-export default function LocationProcessingDialog({ client }: LocationProcessingDialogProps) {
+export default function LocationProcessingDialog({ client, onClose }: LocationProcessingDialogProps) {
   const [changes, setChanges] = useState<LocationChange[]>([])
   const [loading, setLoading] = useState(false)
   const [processing, setProcessing] = useState(false)
@@ -71,7 +72,7 @@ export default function LocationProcessingDialog({ client }: LocationProcessingD
     try {
       await client.stub.applyLocationChanges(changes)
       alert('Änderungen erfolgreich angewendet!')
-      setChanges([])
+      onClose()
     } catch (error) {
       console.error('Error applying changes:', error)
       alert('Fehler beim Anwenden der Änderungen: ' + error)
@@ -124,7 +125,7 @@ export default function LocationProcessingDialog({ client }: LocationProcessingD
         </div>
       ) : (
         <>
-          <div className="space-y-3 mb-4 max-h-96 overflow-y-auto" tabIndex={0}>
+          <div className="space-y-3 mb-4 max-h-96 overflow-y-auto" tabIndex={0} aria-label="Liste der vorgeschlagenen Änderungen">
             {changes.map((change, index) => (
               <div key={index} className="border dark:border-gray-700 rounded p-3">
                 <div className="flex justify-between items-start mb-2">
@@ -176,7 +177,7 @@ export default function LocationProcessingDialog({ client }: LocationProcessingD
           
           <div className="flex justify-end gap-3">
             <button
-              onClick={() => setChanges([])}
+              onClick={onClose}
               className="px-4 py-2 bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 dark:hover:bg-gray-600"
               disabled={processing}
             >
