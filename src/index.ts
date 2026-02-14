@@ -804,6 +804,37 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     console.log(`[LocationProcessing] START: applyLocationChanges`)
     console.log(`[LocationProcessing] Applying ${changes.length} changes`)
     
+    // Collect all unique tag names first
+    const allTagNames = new Set<string>()
+    for (const change of changes) {
+      if (change.changeType !== 'error' && change.changeType !== 'no-change') {
+        change.tagsToAdd.forEach((tag: string) => allTagNames.add(tag))
+      }
+    }
+    
+    // Fetch all existing tags once and create a map
+    console.log(`[LocationProcessing] Fetching all tags from system...`)
+    const existingTagsMap = new Map<string, string>()
+    const allTags = await joplin.data.get(['tags'])
+    console.log(`[LocationProcessing] Found ${allTags.items?.length || 0} existing tags`)
+    for (const tag of allTags.items) {
+      existingTagsMap.set(tag.title, tag.id)
+    }
+    
+    // Create missing tags
+    for (const tagName of allTagNames) {
+      if (!existingTagsMap.has(tagName)) {
+        console.log(`[LocationProcessing] Creating new tag "${tagName}"`)
+        try {
+          const newTag = await joplin.data.post(['tags'], null, { title: tagName })
+          existingTagsMap.set(tagName, newTag.id)
+          console.log(`[LocationProcessing] Created tag "${tagName}" with ID: ${newTag.id}`)
+        } catch (error) {
+          console.error(`[LocationProcessing] ERROR creating tag "${tagName}":`, error)
+        }
+      }
+    }
+    
     for (let i = 0; i < changes.length; i++) {
       const change = changes[i]
       
@@ -852,25 +883,13 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           try {
             console.log(`[LocationProcessing] Processing tag: "${tagName}"`)
             
-            // Prüfe ob Tag bereits existiert
-            console.log(`[LocationProcessing] Fetching all tags...`)
-            const allTags = await joplin.data.get(['tags'])
-            console.log(`[LocationProcessing] Total tags in system: ${allTags.items?.length || 0}`)
-            
-            const existingTag = allTags.items.find((t: any) => t.title === tagName)
-            
-            let tagId: string
-            
-            if (existingTag) {
-              console.log(`[LocationProcessing] Tag "${tagName}" already exists with ID: ${existingTag.id}`)
-              tagId = existingTag.id
-            } else {
-              // Tag erstellen
-              console.log(`[LocationProcessing] Creating new tag "${tagName}"`)
-              const newTag = await joplin.data.post(['tags'], null, { title: tagName })
-              tagId = newTag.id
-              console.log(`[LocationProcessing] Created tag with ID: ${tagId}`)
+            const tagId = existingTagsMap.get(tagName)
+            if (!tagId) {
+              console.warn(`[LocationProcessing] Tag "${tagName}" not found in map, skipping`)
+              continue
             }
+            
+            console.log(`[LocationProcessing] Tag "${tagName}" has ID: ${tagId}`)
             
             // Prüfe ob Notiz bereits dieses Tag hat
             console.log(`[LocationProcessing] Checking if note already has tag...`)
