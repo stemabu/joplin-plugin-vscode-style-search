@@ -121,7 +121,6 @@ function LocationRow({
 
   const currentMovement = noteMovements.get(id) || 'none'
 
-  // NEU: Custom styled radio buttons mit Farben
   const radioButtonStyle = (isSelected: boolean, color: 'gray' | 'red' | 'blue') => {
     const colors = {
       gray: isSelected ? 'bg-gray-500' : 'bg-gray-300',
@@ -172,7 +171,6 @@ const noteHeaderContent = (
   </div>
 )}
     
-    {/* NEU: Tags-Anzeige */}
     {note.tags && note.tags.length > 0 && (
       <div className="flex gap-1 ml-2">
         {note.tags.map((tag) => (
@@ -187,10 +185,9 @@ const noteHeaderContent = (
       </div>
     )}
     
-    {/* Notizbuch-Anzeige (grün gestylt wie Tags) */}
     {parentFolderTitle && (
-      <span className="px-2 py-0.5 ml-2 bg-green-100 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300 text-xs rounded">
-        <span aria-hidden="true">📗 </span>{parentFolderTitle}
+      <span className="px-2 py-0.5 ml-2 bg-green-100 dark:bg-green-900 dark:bg-opacity-30 text-green-700 border border-green-300 dark:border-green-700 dark:text-green-300 text-xs rounded">
+        {parentFolderTitle}
       </span>
     )}
     
