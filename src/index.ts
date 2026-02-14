@@ -218,6 +218,12 @@ function calculateSimilarity(text1: string, text2: string, algorithm: 'jaccard' 
 // Function to get location data by postal code
 async function getLocationByPlz(plz: string): Promise<PlzApiResponse | null> {
   try {
+    // Validate German postal code format (5 digits)
+    if (!/^\d{5}$/.test(plz)) {
+      console.error(`Invalid PLZ format: ${plz}`)
+      return null
+    }
+    
     const response = await fetch(`https://openplzapi.org/de/Localities?postalCode=${plz}`)
     const data = await response.json()
     
@@ -548,6 +554,7 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           
           if (state) {
             newSections[10] = state  // Insert state in 11th section
+            tagsToAdd.push(`Ort:${cityName}`)
             tagsToAdd.push(`BL:${state}`)
             changeType = 'city-to-state'
           } else {
@@ -556,7 +563,10 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           }
         }
         
-        const newLine = `MusliStart-${newSections.join(';')}-MusliEnde`
+        // Only reconstruct newLine if there's an actual change
+        const newLine = (changeType !== 'error' && changeType !== 'no-change')
+          ? `MusliStart-${newSections.join(';')}-MusliEnde`
+          : line
         
         changes.push({
           noteId: note.id,
@@ -586,6 +596,30 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
   },
 
   applyLocationChanges: async (changes: any[]): Promise<void> => {
+    // Collect all unique tag names first
+    const allTagNames = new Set<string>()
+    for (const change of changes) {
+      if (change.changeType !== 'error' && change.changeType !== 'no-change') {
+        change.tagsToAdd.forEach((tag: string) => allTagNames.add(tag))
+      }
+    }
+    
+    // Fetch all existing tags once
+    const existingTagsMap = new Map<string, string>()
+    const allTags = await joplin.data.get(['tags'])
+    for (const tag of allTags.items) {
+      existingTagsMap.set(tag.title, tag.id)
+    }
+    
+    // Create missing tags
+    for (const tagName of allTagNames) {
+      if (!existingTagsMap.has(tagName)) {
+        const newTag = await joplin.data.post(['tags'], null, { title: tagName })
+        existingTagsMap.set(tagName, newTag.id)
+      }
+    }
+    
+    // Now process each change
     for (const change of changes) {
       if (change.changeType === 'error' || change.changeType === 'no-change') {
         continue
@@ -600,23 +634,11 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
         
         // 2. Add tags
         for (const tagName of change.tagsToAdd) {
-          // Check if tag already exists
-          const existingTags = await joplin.data.get(['tags'], { 
-            query: { title: tagName } 
-          })
-          
-          let tagId: string
-          
-          if (existingTags.items.length > 0) {
-            tagId = existingTags.items[0].id
-          } else {
-            // Create tag
-            const newTag = await joplin.data.post(['tags'], null, { title: tagName })
-            tagId = newTag.id
+          const tagId = existingTagsMap.get(tagName)
+          if (tagId) {
+            // Link tag with note
+            await joplin.data.post(['tags', tagId, 'notes'], null, { id: change.noteId })
           }
-          
-          // Link tag with note
-          await joplin.data.post(['tags', tagId, 'notes'], null, { id: change.noteId })
         }
         
       } catch (error) {

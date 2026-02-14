@@ -124,7 +124,7 @@ export default function LocationProcessingDialog({ client }: LocationProcessingD
         </div>
       ) : (
         <>
-          <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
+          <div className="space-y-3 mb-4 max-h-96 overflow-y-auto" tabIndex={0}>
             {changes.map((change, index) => (
               <div key={index} className="border dark:border-gray-700 rounded p-3">
                 <div className="flex justify-between items-start mb-2">
