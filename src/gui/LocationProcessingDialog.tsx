@@ -9,6 +9,12 @@ interface LocationChange {
   tagsToAdd: string[]
   changeType: 'plz-to-city' | 'city-to-state' | 'no-change' | 'error'
   errorMessage?: string
+  section9Before: string
+  section10Before: string
+  section11Before: string
+  section9After: string
+  section10After: string
+  section11After: string
 }
 
 interface LocationProcessingDialogProps {
@@ -21,6 +27,7 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
   const [loading, setLoading] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([])
+  const [selectedChanges, setSelectedChanges] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     loadChanges()
@@ -51,29 +58,35 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
       console.log('[LocationDialog] Calling analyzeLocationData RPC method...')
       const analyzedChanges = await client.stub.analyzeLocationData(noteIds)
       console.log('[LocationDialog] Received analyzed changes:', analyzedChanges)
-console.log('[LocationDialog] Number of changes:', analyzedChanges.length)
-
-// NEU: Detaillierte Ausgabe jedes Changes
-analyzedChanges.forEach((change, index) => {
-  console.log(`[LocationDialog] Change ${index + 1}:`)
-  console.log(`  - Note ID: ${change.noteId}`)
-  console.log(`  - Note Title: ${change.noteTitle}`)
-  console.log(`  - Change Type: ${change.changeType}`)
-  console.log(`  - Original Line: ${change.originalLine}`)
-  console.log(`  - New Line: ${change.newLine}`)
-  console.log(`  - Tags to Add: ${JSON.stringify(change.tagsToAdd)}`)
-  if (change.errorMessage) {
-    console.error(`  - ERROR: ${change.errorMessage}`)
-  }
-})
+      console.log('[LocationDialog] Number of changes:', analyzedChanges.length)
+      
+      // Detaillierte Ausgabe
+      analyzedChanges.forEach((change, index) => {
+        console.log(`[LocationDialog] Change ${index + 1}:`)
+        console.log(`  - Note ID: ${change.noteId}`)
+        console.log(`  - Note Title: ${change.noteTitle}`)
+        console.log(`  - Change Type: ${change.changeType}`)
+        console.log(`  - Tags to Add: ${JSON.stringify(change.tagsToAdd)}`)
+        if (change.errorMessage) {
+          console.error(`  - ERROR: ${change.errorMessage}`)
+        }
+      })
       
       setChanges(analyzedChanges)
       console.log('[LocationDialog] Changes state updated')
       
+      // Automatisch alle erfolgreichen Änderungen auswählen
+      const autoSelected = new Set<number>()
+      analyzedChanges.forEach((change, index) => {
+        if (change.changeType !== 'error' && change.changeType !== 'no-change') {
+          autoSelected.add(index)
+        }
+      })
+      setSelectedChanges(autoSelected)
+      
     } catch (error) {
       console.error('[LocationDialog] ERROR in loadChanges:', error)
       console.error('[LocationDialog] Error stack:', error.stack)
-      console.error('[LocationDialog] Error details:', JSON.stringify(error, null, 2))
       alert('Fehler beim Analysieren der Notizen: ' + error)
     } finally {
       setLoading(false)
@@ -81,27 +94,28 @@ analyzedChanges.forEach((change, index) => {
     }
   }
 
+  const toggleChange = (index: number) => {
+    const newSelected = new Set(selectedChanges)
+    if (newSelected.has(index)) {
+      newSelected.delete(index)
+    } else {
+      newSelected.add(index)
+    }
+    setSelectedChanges(newSelected)
+  }
+
   const applyChanges = async () => {
-    if (changes.length === 0) {
-      alert('Keine Änderungen vorhanden.')
+    if (selectedChanges.size === 0) {
+      alert('Keine Änderungen ausgewählt.')
       return
     }
     
-    const validChanges = changes.filter(c => c.changeType !== 'error' && c.changeType !== 'no-change')
-    
-    if (validChanges.length === 0) {
-      alert('Keine gültigen Änderungen zum Anwenden vorhanden.')
-      return
-    }
-    
-    if (!confirm(`${validChanges.length} Änderung(en) werden durchgeführt. Fortfahren?`)) {
-      return
-    }
+    const changesToApply = changes.filter((_, index) => selectedChanges.has(index))
     
     setProcessing(true)
     try {
-      await client.stub.applyLocationChanges(changes)
-      alert('Änderungen erfolgreich angewendet!')
+      await client.stub.applyLocationChanges(changesToApply)
+      alert(`${changesToApply.length} Änderung(en) erfolgreich durchgeführt!`)
       onClose()
     } catch (error) {
       console.error('Error applying changes:', error)
@@ -111,21 +125,17 @@ analyzedChanges.forEach((change, index) => {
     }
   }
 
-  const getChangeTypeColor = (type: LocationChange['changeType']) => {
-    switch (type) {
-      case 'plz-to-city': return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
-      case 'city-to-state': return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-      case 'error': return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-      case 'no-change': return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-    }
+  const truncateTitle = (title: string, maxLength: number = 80) => {
+    if (title.length <= maxLength) return title
+    return title.substring(0, maxLength) + '...'
   }
 
-  const getChangeTypeLabel = (type: LocationChange['changeType']) => {
+  const getChangeColor = (type: LocationChange['changeType']) => {
     switch (type) {
-      case 'plz-to-city': return 'PLZ → Ortsname'
-      case 'city-to-state': return 'Ort → Bundesland'
-      case 'error': return 'Fehler'
-      case 'no-change': return 'Keine Änderung'
+      case 'plz-to-city': return 'text-blue-700 dark:text-blue-300'
+      case 'city-to-state': return 'text-green-700 dark:text-green-300'
+      case 'error': return 'text-red-700 dark:text-red-300'
+      default: return 'text-gray-700 dark:text-gray-300'
     }
   }
 
@@ -146,6 +156,7 @@ analyzedChanges.forEach((change, index) => {
         <p className="text-sm">
           <strong>{selectedNoteIds.length}</strong> Notiz(en) markiert. 
           <strong className="ml-2">{changes.length}</strong> Notiz(en) mit MusliStart-Zeile gefunden.
+          <strong className="ml-2">{selectedChanges.size}</strong> Änderung(en) ausgewählt.
         </p>
       </div>
 
@@ -155,52 +166,55 @@ analyzedChanges.forEach((change, index) => {
         </div>
       ) : (
         <>
-          <div className="space-y-3 mb-4 max-h-96 overflow-y-auto" tabIndex={0} aria-label="Liste der vorgeschlagenen Änderungen">
+          <div className="space-y-2 mb-4 max-h-96 overflow-y-auto border dark:border-gray-700 rounded p-2">
             {changes.map((change, index) => (
-              <div key={index} className="border dark:border-gray-700 rounded p-3">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold">{change.noteTitle}</h3>
-                  <span className={`px-2 py-1 text-xs rounded ${getChangeTypeColor(change.changeType)}`}>
-                    {getChangeTypeLabel(change.changeType)}
-                  </span>
-                </div>
+              <div 
+                key={index} 
+                className={`flex items-start gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                  change.changeType === 'error' ? 'bg-red-50 dark:bg-red-900 dark:bg-opacity-10' : ''
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedChanges.has(index)}
+                  onChange={() => toggleChange(index)}
+                  disabled={change.changeType === 'error' || change.changeType === 'no-change'}
+                  className="mt-1 w-4 h-4"
+                />
                 
-                {change.errorMessage && (
-                  <div className="mb-2 p-2 bg-red-50 dark:bg-red-900 dark:bg-opacity-20 text-red-800 dark:text-red-200 text-sm rounded">
-                    {change.errorMessage}
+                <div className="flex-1 text-sm">
+                  <div className="font-semibold mb-1">
+                    Notiz: "{truncateTitle(change.noteTitle)}"
                   </div>
-                )}
-                
-                <div className="mb-2">
-                  <div className="text-xs text-gray-500 mb-1">Vorher:</div>
-                  <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono break-all">
-                    {change.originalLine}
-                  </div>
-                </div>
-                
-                {change.changeType !== 'error' && change.changeType !== 'no-change' && (
-                  <>
-                    <div className="mb-2">
-                      <div className="text-xs text-gray-500 mb-1">Nachher:</div>
-                      <div className="p-2 bg-green-50 dark:bg-green-900 dark:bg-opacity-20 rounded text-sm font-mono break-all">
-                        {change.newLine}
-                      </div>
+                  
+                  {change.errorMessage ? (
+                    <div className="text-red-700 dark:text-red-300">
+                      Fehler: {change.errorMessage}
                     </div>
-                    
-                    {change.tagsToAdd.length > 0 && (
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Tags hinzufügen:</div>
-                        <div className="flex gap-2 flex-wrap">
+                  ) : (
+                    <>
+                      <div className={`font-mono ${getChangeColor(change.changeType)}`}>
+                        Änderung: {change.section9Before}; {change.section10Before}; {change.section11Before} 
+                        <span className="mx-2">→</span>
+                        {change.section9After}; {change.section10After}; {change.section11After}
+                      </div>
+                      
+                      {change.tagsToAdd.length > 0 && (
+                        <div className="mt-1 flex gap-1 flex-wrap">
+                          <span className="text-gray-600 dark:text-gray-400">Tags:</span>
                           {change.tagsToAdd.map((tag, i) => (
-                            <span key={i} className="px-2 py-1 bg-purple-100 dark:bg-purple-900 dark:bg-opacity-30 text-purple-700 dark:text-purple-300 text-xs rounded">
+                            <span 
+                              key={i} 
+                              className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900 dark:bg-opacity-30 text-purple-700 dark:text-purple-300 text-xs rounded"
+                            >
                               {tag}
                             </span>
                           ))}
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -216,9 +230,9 @@ analyzedChanges.forEach((change, index) => {
             <button
               onClick={applyChanges}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-              disabled={processing || changes.filter(c => c.changeType !== 'error' && c.changeType !== 'no-change').length === 0}
+              disabled={processing || selectedChanges.size === 0}
             >
-              {processing ? 'Wird ausgeführt...' : 'Ausführen'}
+              {processing ? 'Wird ausgeführt...' : `${selectedChanges.size} Änderung(en) ausführen`}
             </button>
           </div>
         </>
