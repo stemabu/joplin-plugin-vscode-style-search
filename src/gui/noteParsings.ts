@@ -100,7 +100,9 @@ if (titlesOnly || fragmentMatches.length || parsedKeywords.length === 0) {
       title: note.title,
       updated_time: note.updated_time,
       folderTitle,
-      matchCount: fragmentMatches.length,
+      // When titlesOnly is true, the match is in the title itself (count = 1)
+      // Otherwise, count the fragment matches in the body
+      matchCount: titlesOnly ? 1 : fragmentMatches.length,
     }
 
     const fragmentItems = fragmentMatches.map((match, index) => {

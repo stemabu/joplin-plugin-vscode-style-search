@@ -20,7 +20,7 @@ import './variables.css'
 import searchStyles from './SearchFiles.module.css'
 import { keywords } from './searchProcessing'
 import { ParsedNote, parseNote } from './noteParsings'
-import { isFragmentItem, NoteItemData, NoteSearchItemData, NoteSearchListData } from './NoteSearchListData'
+import { isFragmentItem, isNoteItem, NoteItemData, NoteSearchItemData, NoteSearchListData } from './NoteSearchListData'
 import ResultsList from './ResultsList'
 import { FilterButton } from './FilterButton'
 
@@ -648,7 +648,9 @@ if (mode === 'search') {
   } else if (searchResults?.parsedNotes.length === 0) {
     rendered = mode === 'search' ? 'Keine Ergebnisse gefunden' : 'Keine ähnlichen Notizen gefunden'
   } else {
-    const totalMatches = results.filter((r) => isFragmentItem(r)).length
+    const totalMatches = titlesOnly 
+      ? results.filter((r) => isNoteItem(r)).length 
+      : results.filter((r) => isFragmentItem(r)).length
     const selectClassname =
       'bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 min-w-28'
 
