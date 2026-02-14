@@ -24,6 +24,32 @@ export interface Tag {
   title: string
 }
 
+// German states for location data processing
+const GERMAN_STATES = [
+  'Baden-Württemberg',
+  'Bayern',
+  'Berlin',
+  'Brandenburg',
+  'Bremen',
+  'Hamburg',
+  'Hessen',
+  'Mecklenburg-Vorpommern',
+  'Niedersachsen',
+  'Nordrhein-Westfalen',
+  'Rheinland-Pfalz',
+  'Saarland',
+  'Sachsen',
+  'Sachsen-Anhalt',
+  'Schleswig-Holstein',
+  'Thüringen'
+]
+
+// Interface for openplzapi Response
+interface PlzApiResponse {
+  name: string  // City name
+  state: string  // State/Bundesland
+}
+
 // Funktion für Extraktion von rechts
 function extractFromTitleRight(title: string, startDelim: string, endDelim: string): string | null {
   const endIndex = title.lastIndexOf(endDelim)
@@ -185,6 +211,65 @@ function calculateSimilarity(text1: string, text2: string, algorithm: 'jaccard' 
     case 'minhash': return minHashSimilarity(text1, text2)
     default: return 0
   }
+}
+
+// Location data processing helper functions
+
+// Function to get location data by postal code
+async function getLocationByPlz(plz: string): Promise<PlzApiResponse | null> {
+  try {
+    // Validate German postal code format (5 digits)
+    if (!/^\d{5}$/.test(plz)) {
+      console.error(`Invalid PLZ format: ${plz}`)
+      return null
+    }
+    
+    const response = await fetch(`https://openplzapi.org/de/Localities?postalCode=${plz}`)
+    const data = await response.json()
+    
+    if (data && data.length > 0) {
+      return {
+        name: data[0].name,
+        state: data[0].state.name
+      }
+    }
+    return null
+  } catch (error) {
+    console.error(`Error fetching location for PLZ ${plz}:`, error)
+    return null
+  }
+}
+
+// Function to get state by city name
+async function getStateByCity(cityName: string): Promise<string | null> {
+  try {
+    const response = await fetch(`https://openplzapi.org/de/Localities?name=${encodeURIComponent(cityName)}`)
+    const data = await response.json()
+    
+    if (data && data.length > 0) {
+      return data[0].state.name
+    }
+    return null
+  } catch (error) {
+    console.error(`Error fetching state for city ${cityName}:`, error)
+    return null
+  }
+}
+
+// Function to parse MusliStart line
+function parseMusliLine(noteBody: string): { line: string; sections: string[] } | null {
+  const musliRegex = /MusliStart-(.+?)-MusliEnde/
+  const match = noteBody.match(musliRegex)
+  
+  if (!match) {
+    return null
+  }
+  
+  const line = match[0]
+  const content = match[1]
+  const sections = content.split(';')
+  
+  return { line, sections }
 }
 
 const handler = {
@@ -384,6 +469,184 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     } catch (error) {
       console.error('Error moving notes:', error)
       throw error
+    }
+  },
+
+  getSelectedNoteIds: async (): Promise<string[]> => {
+    try {
+      const noteIds = await joplin.workspace.selectedNoteIds()
+      return noteIds
+    } catch (error) {
+      console.error('Error getting selected note IDs:', error)
+      return []
+    }
+  },
+
+  analyzeLocationData: async (noteIds: string[]): Promise<any[]> => {
+    const changes: any[] = []
+    
+    // Maximum 100 notes
+    const limitedNoteIds = noteIds.slice(0, 100)
+    
+    for (const noteId of limitedNoteIds) {
+      try {
+        const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body'] })
+        const parsed = parseMusliLine(note.body)
+        
+        if (!parsed) {
+          // No MusliStart line found
+          continue
+        }
+        
+        const { line, sections } = parsed
+        
+        // Check if enough sections (minimum 11)
+        if (sections.length < 11) {
+          changes.push({
+            noteId: note.id,
+            noteTitle: note.title,
+            originalLine: line,
+            newLine: line,
+            tagsToAdd: [],
+            changeType: 'error',
+            errorMessage: 'Nicht genügend Abschnitte in der MusliStart-Zeile'
+          })
+          continue
+        }
+        
+        const ninthSection = sections[8]?.trim()  // Index 8 = 9th section
+        const tenthSection = sections[9]?.trim()  // Index 9 = 10th section
+        const eleventhSection = sections[10]?.trim()  // Index 10 = 11th section
+        
+        let newSections = [...sections]
+        let tagsToAdd: string[] = []
+        let changeType: any = 'no-change'
+        let errorMessage: string | undefined
+        
+        if (ninthSection === 'plz') {
+          // Case 1: PLZ -> determine city name
+          const plz = tenthSection
+          const state = eleventhSection
+          
+          if (!plz) {
+            errorMessage = '10. Abschnitt (PLZ) fehlt'
+            changeType = 'error'
+          } else if (!state) {
+            errorMessage = '11. Abschnitt (Bundesland) fehlt'
+            changeType = 'error'
+          } else if (!GERMAN_STATES.includes(state)) {
+            errorMessage = `11. Abschnitt enthält kein gültiges Bundesland: "${state}"`
+            changeType = 'error'
+          } else {
+            const locationData = await getLocationByPlz(plz)
+            
+            if (locationData) {
+              newSections[8] = locationData.name  // Replace PLZ with city name
+              tagsToAdd.push(`Ort:${locationData.name}`)
+              tagsToAdd.push(`BL:${state}`)
+              changeType = 'plz-to-city'
+            } else {
+              errorMessage = `Konnte keinen Ort für PLZ ${plz} finden`
+              changeType = 'error'
+            }
+          }
+        } else if (ninthSection && ninthSection !== 'plz') {
+          // Case 2: City name -> determine state
+          const cityName = ninthSection
+          const state = await getStateByCity(cityName)
+          
+          if (state) {
+            newSections[10] = state  // Insert state in 11th section
+            tagsToAdd.push(`Ort:${cityName}`)
+            tagsToAdd.push(`BL:${state}`)
+            changeType = 'city-to-state'
+          } else {
+            errorMessage = `Konnte kein Bundesland für Ort "${cityName}" finden`
+            changeType = 'error'
+          }
+        }
+        
+        // Only reconstruct newLine if there's an actual change
+        const newLine = (changeType !== 'error' && changeType !== 'no-change')
+          ? `MusliStart-${newSections.join(';')}-MusliEnde`
+          : line
+        
+        changes.push({
+          noteId: note.id,
+          noteTitle: note.title,
+          originalLine: line,
+          newLine: newLine,
+          tagsToAdd: tagsToAdd,
+          changeType: changeType,
+          errorMessage: errorMessage
+        })
+        
+      } catch (error) {
+        console.error(`Error processing note ${noteId}:`, error)
+        changes.push({
+          noteId: noteId,
+          noteTitle: 'Fehler beim Laden',
+          originalLine: '',
+          newLine: '',
+          tagsToAdd: [],
+          changeType: 'error',
+          errorMessage: error.message || 'Unbekannter Fehler'
+        })
+      }
+    }
+    
+    return changes
+  },
+
+  applyLocationChanges: async (changes: any[]): Promise<void> => {
+    // Collect all unique tag names first
+    const allTagNames = new Set<string>()
+    for (const change of changes) {
+      if (change.changeType !== 'error' && change.changeType !== 'no-change') {
+        change.tagsToAdd.forEach((tag: string) => allTagNames.add(tag))
+      }
+    }
+    
+    // Fetch all existing tags once
+    const existingTagsMap = new Map<string, string>()
+    const allTags = await joplin.data.get(['tags'])
+    for (const tag of allTags.items) {
+      existingTagsMap.set(tag.title, tag.id)
+    }
+    
+    // Create missing tags
+    for (const tagName of allTagNames) {
+      if (!existingTagsMap.has(tagName)) {
+        const newTag = await joplin.data.post(['tags'], null, { title: tagName })
+        existingTagsMap.set(tagName, newTag.id)
+      }
+    }
+    
+    // Now process each change
+    for (const change of changes) {
+      if (change.changeType === 'error' || change.changeType === 'no-change') {
+        continue
+      }
+      
+      try {
+        // 1. Update note body
+        const note = await joplin.data.get(['notes', change.noteId], { fields: ['body'] })
+        const newBody = note.body.replace(change.originalLine, change.newLine)
+        
+        await joplin.data.put(['notes', change.noteId], null, { body: newBody })
+        
+        // 2. Add tags
+        for (const tagName of change.tagsToAdd) {
+          const tagId = existingTagsMap.get(tagName)
+          if (tagId) {
+            // Link tag with note
+            await joplin.data.post(['tags', tagId, 'notes'], null, { id: change.noteId })
+          }
+        }
+        
+      } catch (error) {
+        console.error(`Error applying changes to note ${change.noteId}:`, error)
+      }
     }
   },
 }
@@ -684,6 +947,20 @@ joplin.plugins.register({
       },
     })
 
+    joplin.commands.register({
+      name: 'openLocationProcessingDialog',
+      label: 'Ortsdaten verarbeiten (F12)',
+      iconName: 'fas fa-map-marker-alt',
+      execute: async () => {
+        await joplin.views.panels.postMessage(panel, {
+          type: 'OPEN_LOCATION_PROCESSING_DIALOG',
+        })
+        if (!(await joplin.views.panels.visible(panel))) {
+          await joplin.views.panels.show(panel)
+        }
+      },
+    })
+
     joplin.views.menuItems.create(
       'isquaredsoftware.vscode-search.toggle_panel.menuitem',
       'isquaredsoftware.vscode-search.toggle_panel',
@@ -710,6 +987,13 @@ joplin.plugins.register({
       'isquaredsoftware.vscode-search.search_selected_text',
       MenuItemLocation.View,
       { accelerator: 'F7' },
+    )
+
+    joplin.views.menuItems.create(
+      'processLocationDataMenuItem',
+      'openLocationProcessingDialog',
+      MenuItemLocation.Tools,
+      { accelerator: 'F12' },
     )
 
     const target: PostMessageTarget = {

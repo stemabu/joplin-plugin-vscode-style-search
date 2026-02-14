@@ -23,6 +23,7 @@ import { ParsedNote, parseNote } from './noteParsings'
 import { isFragmentItem, isNoteItem, NoteItemData, NoteSearchItemData, NoteSearchListData } from './NoteSearchListData'
 import ResultsList from './ResultsList'
 import { FilterButton } from './FilterButton'
+import LocationProcessingDialog from './LocationProcessingDialog'
 
 let commandMessageHandler: ((msg: any) => void) | null = null
 
@@ -133,6 +134,9 @@ function App() {
     minhash_title: DEFAULT_THRESHOLDS.minhash.title,
     minhash_full: DEFAULT_THRESHOLDS.minhash.full,
   })
+
+  // Location processing dialog state
+  const [showLocationDialog, setShowLocationDialog] = useState(false)
 
 // Settings beim Start laden
 useEffect(() => {
@@ -281,6 +285,11 @@ useEffect(() => {
               setMode('search')
               setSearchText(text)
             }
+            break
+          }
+          case 'OPEN_LOCATION_PROCESSING_DIALOG': {
+            console.log('Opening location processing dialog')
+            setShowLocationDialog(true)
             break
           }
         }
@@ -995,6 +1004,27 @@ if (mode === 'search') {
       </div>
 
       {rendered}
+
+      {showLocationDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-6xl w-full max-h-screen overflow-auto">
+            <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+              <h2 className="text-xl font-bold">Ortsdaten verarbeiten</h2>
+              <button
+                onClick={() => setShowLocationDialog(false)}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                aria-label="Dialog schließen"
+              >
+                ✕
+              </button>
+            </div>
+            <LocationProcessingDialog 
+              client={client} 
+              onClose={() => setShowLocationDialog(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
