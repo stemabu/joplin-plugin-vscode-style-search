@@ -802,13 +802,31 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
                 // Duplikate nach Bundesland entfernen
                 const uniqueStates = new Map<string, typeof candidateStates[0]>()
                 candidateStates.forEach(candidate => {
-                  if (!uniqueStates.has(candidate.state)) {
+                if (!uniqueStates.has(candidate.state)) {
                     uniqueStates.set(candidate.state, candidate)
-                  }
-                })
-                candidateStates = Array.from(uniqueStates.values())
-                
-                console.log(`[LocationProcessing] ${candidateStates.length} unique states for "${ort}":`, candidateStates)
+                }
+            })
+           candidateStates = Array.from(uniqueStates.values())
+
+           console.log(`[LocationProcessing] ${candidateStates.length} unique states for "${ort}":`, candidateStates)
+
+          // Wenn nur EIN Bundesland → direkt verwenden (kein Dropdown)
+          if (candidateStates.length === 1) {
+          const match = candidateStates[0]
+          newPlz = match.plz || ''
+          newBundesland = match.state
+         changeType = 'city-to-state'
+  
+        console.log(`[LocationProcessing] Single unique state after deduplication: ${ort} → PLZ: ${newPlz}, State: ${newBundesland}`)
+  
+        tagsToAdd.push(`ort:${normalizeForTag(ort)}`)
+        tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
+  
+        candidateStates = undefined  // Wichtig! Kein Dropdown anzeigen
+        } else if (candidateStates.length === 0) {
+       errorMessage = `Keine gültigen Daten für "${ort}" gefunden`
+       changeType = 'error'
+       }
                 
                 if (candidateStates.length === 0) {
                   errorMessage = `Keine gültigen Daten für "${ort}" gefunden`
