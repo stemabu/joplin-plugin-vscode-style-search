@@ -389,31 +389,6 @@ async function getStateByCity(cityName: string): Promise<string | null> {
   }
 }
 
-// Updated function to parse MusliStart line
-function parseMusliLine(noteBody: string): { line: string; sections: string[]; decodedLine: string } | null {
-  const musliRegex = /MusliStart-(.+?)-MusliEnde/
-  const match = noteBody.match(musliRegex)
-  
-  if (!match) {
-    return null
-  }
-  
-  const line = match[0]  // Original HTML-encoded line
-  const content = match[1]
-  
-  // IMPORTANT: Decode HTML entities BEFORE we split
-  const decodedContent = decodeHtmlEntities(content)
-  const decodedLine = `MusliStart-${decodedContent}-MusliEnde`
-  
-  const sections = decodedContent.split(';')
-  
-  return { 
-    line,           // Original for later replace
-    sections,       // Decoded sections
-    decodedLine     // Decoded line for preview
-  }
-}
-
 // Hilfs-Funktion für Tag-Normalisierung
 function normalizeForTag(text: string): string {
   return text
@@ -650,23 +625,21 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     
     try {
       console.log(`[LocationProcessing] Fetching note data...`)  // ← NEU!
-      const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body', 'parent_id'] })
-      console.log(`[LocationProcessing] Note fetched: ${note.title}`)  // ← NEU!
-        
-       // MusliStart-Zeile parsen
-       const parsed = parseMusliLine(note.body)
-		  
-       if (!parsed) {
-           console.log(`[LocationProcessing] Note ${noteId}: No MusliStart line found - skipping`)
-           console.log(`[LocationProcessing] Body contains 'MusliStart': ${note.body.includes('MusliStart')}`)
-           console.log(`[LocationProcessing] Body preview: ${note.body.substring(0, 300)}...`)
- 	       continue
-       }      
+    	const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body', 'parent_id'] })
+		console.log(`[LocationProcessing] Note fetched: ${note.title}`)
+  
+		// MusliStart-Zeile finden
+		const lines = note.body.split('\n')
+		const musliStartLine = lines.find(line => line.includes('MusliStart'))
 
-        // Extrahierte Daten
-       const sections = parsed.sections
-       const musliStartLine = parsed.line
-       const decodedLine = parsed.decodedLine
+		if (!musliStartLine) {
+		  console.log(`[LocationProcessing] Note ${noteId}: No MusliStart line found - skipping`)
+		  continue
+		}
+
+		// Decode HTML entities
+		const decodedLine = decodeHtmlEntities(musliStartLine)
+		const sections = decodedLine.split(';')
         
         // 9. Abschnitt = Ort, 10. Abschnitt = PLZ, 11. Abschnitt = Bundesland
         const ort = sections[8]?.trim() || ''
