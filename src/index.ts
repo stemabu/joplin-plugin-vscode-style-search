@@ -641,59 +641,70 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
 		const decodedLine = decodeHtmlEntities(musliStartLine)
 		const sections = decodedLine.split(';')
         
-        // 9. Abschnitt = Ort, 10. Abschnitt = PLZ, 11. Abschnitt = Bundesland
-        const ort = sections[8]?.trim() || ''
-        const plz = sections[9]?.trim() || ''
-        const bundesland = sections[10]?.trim() || ''
-        
-        console.log(`[LocationProcessing] Note ${noteId} (${note.title}): Ort="${ort}", PLZ="${plz}", Bundesland="${bundesland}"`)
-        
-        // NEU: Nur skippen wenn ALLE DREI Felder vorhanden sind
-        if (ort && plz && bundesland) {
-          console.log(`[LocationProcessing] Note ${noteId}: All location data complete - skipping`)
-          continue
-        }
-        
-        // Ab hier: Mindestens ein Feld fehlt
-        
-        let changeType: any = 'no-change'
-        let errorMessage: string | undefined
-        let tagsToAdd: string[] = []
-        let newOrt = ort
-        let newPlz = plz
-        let newBundesland = bundesland
-        let candidateStates: Array<{ city: string; state: string; plz?: string }> | undefined
-        
-        // === Fall 1: Nur PLZ vorhanden → PLZ-Lookup für Ort + Bundesland ===
-        if (!ort && plz && !bundesland) {
-          console.log(`[LocationProcessing] Case 1: Only PLZ "${plz}" - looking up city and state`)
-          
-          try {
-            const location = await getLocationByPlz(plz)
-            
-            if (location) {
-              newOrt = location.name
-              newBundesland = location.state
-              changeType = 'plz-to-city'
-              
-              console.log(`[LocationProcessing] PLZ ${plz} → City: ${newOrt}, State: ${newBundesland}`)
-              
-              // Tags erstellen
-              tagsToAdd.push(`ort:${normalizeForTag(newOrt)}`)
-              tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
-            } else {
-              errorMessage = `Keine Daten für PLZ ${plz} gefunden`
-              changeType = 'error'
-            }
-          } catch (error) {
-            console.error(`[LocationProcessing] Error fetching PLZ ${plz}:`, error)
-            errorMessage = `API-Fehler bei PLZ ${plz}: ${error.message}`
-            changeType = 'error'
-          }
-        }
-        
-        // === Fall 2: Ort + PLZ vorhanden, aber kein Bundesland → PLZ-Lookup (genauer!) ===
-        else if (ort && plz && !bundesland) {
+		// 9. Abschnitt = Ort, 10. Abschnitt = PLZ, 11. Abschnitt = Bundesland
+		const rawOrt = sections[8]?.trim() || ''
+		const plz = sections[9]?.trim() || ''
+		const bundesland = sections[10]?.trim() || ''
+
+		// Prüfen ob "plz" als Platzhalter verwendet wird
+		const isPlzPlaceholder = rawOrt.toLowerCase() === 'plz'
+		const ort = isPlzPlaceholder ? '' : rawOrt
+
+		console.log(`[LocationProcessing] Note ${noteId} (${note.title}): Ort="${rawOrt}"${isPlzPlaceholder ? ' (Platzhalter)' : ''}, PLZ="${plz}", Bundesland="${bundesland}"`)
+
+		// Skippen wenn ALLE DREI Felder echt ausgefüllt sind (kein Platzhalter!)
+		if (ort && plz && bundesland) {
+		  console.log(`[LocationProcessing] Note ${noteId}: All location data complete - skipping`)
+		  continue
+		}
+
+		// Ab hier: Mindestens ein Feld fehlt oder ist Platzhalter
+
+		let changeType: any = 'no-change'
+		let errorMessage: string | undefined
+		let tagsToAdd: string[] = []
+		let newOrt = ort
+		let newPlz = plz
+		let newBundesland = bundesland
+		let candidateStates: Array<{ city: string; state: string; plz?: string }> | undefined
+
+		// === Fall 0: "plz"-Platzhalter + PLZ vorhanden → Ortsname via PLZ ermitteln ===
+		if (isPlzPlaceholder && plz) {
+		  console.log(`[LocationProcessing] Case 0: Placeholder "plz" with PLZ "${plz}" - looking up city name`)
+	  
+		  try {
+		    const location = await getLocationByPlz(plz)
+    
+		    if (location) {
+		      newOrt = location.name
+		      // Falls Bundesland noch leer war, auch setzen
+		      if (!bundesland) {
+		        newBundesland = location.state
+	      }
+	      changeType = 'plz-to-city'
+      
+	      console.log(`[LocationProcessing] PLZ ${plz} → City: ${newOrt}${!bundesland ? `, State: ${newBundesland}` : ''}`)
+      
+	      // Tags erstellen
+	      tagsToAdd.push(`ort:${normalizeForTag(newOrt)}`)
+	      if (bundesland) {
+	        tagsToAdd.push(`bl:${normalizeForTag(bundesland)}`)
+	      } else {
+	        tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
+	      }
+	    } else {
+	      errorMessage = `Keine Daten für PLZ ${plz} gefunden`
+	      changeType = 'error'
+	    }
+	  } catch (error) {
+ 	   console.error(`[LocationProcessing] Error fetching PLZ ${plz}:`, error)
+	    errorMessage = `API-Fehler bei PLZ ${plz}: ${error.message}`
+ 	   changeType = 'error'
+	  }
+	}
+
+	// === Fall 1: Nur PLZ vorhanden (kein Ort, kein Bundesland) → PLZ-Lookup für Ort + Bundesland ===
+	else if (!ort && plz && !bundesland) {
           console.log(`[LocationProcessing] Case 2: City "${ort}" and PLZ "${plz}" - looking up state via PLZ`)
           
           try {
