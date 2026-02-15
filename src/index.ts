@@ -660,7 +660,7 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
            console.log(`[LocationProcessing] Note ${noteId}: No MusliStart line found - skipping`)
            console.log(`[LocationProcessing] Body contains 'MusliStart': ${note.body.includes('MusliStart')}`)
            console.log(`[LocationProcessing] Body preview: ${note.body.substring(0, 300)}...`)
-       continue
+ 	       continue
        }      
 
         // Extrahierte Daten
