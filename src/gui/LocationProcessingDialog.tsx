@@ -7,7 +7,7 @@ interface LocationChange {
   originalLine: string
   newLine: string
   tagsToAdd: string[]
-  changeType: 'plz-to-city' | 'city-to-state' | 'no-change' | 'error'
+  changeType: 'plz-to-city' | 'city-to-state' | 'plz-to-state' | 'multiple-matches' | 'no-change' | 'error'
   errorMessage?: string
   section9Before?: string
   section10Before?: string
@@ -15,6 +15,12 @@ interface LocationChange {
   section9After?: string
   section10After?: string
   section11After?: string
+  candidateStates?: Array<{
+    city: string
+    state: string
+    plz?: string
+  }>
+  selectedStateIndex?: number
 }
 
 interface LocationProcessingDialogProps {
@@ -88,6 +94,54 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
   const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([])
   const [selectedChanges, setSelectedChanges] = useState<Set<number>>(new Set())
 
+  // Normalisierung (muss identisch mit Backend sein)
+  const normalizeForTag = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]/g, '')
+  }
+
+  // NEU: Handler für Mehrdeutigkeits-Auswahl
+  const handleStateSelection = (changeIndex: number, candidateIndex: number) => {
+    const updatedChanges = [...changes]
+    const change = updatedChanges[changeIndex]
+    
+    if (change.candidateStates && candidateIndex >= 0) {
+      const selectedCandidate = change.candidateStates[candidateIndex]
+      
+      // Update mit ausgewähltem Bundesland und PLZ
+      change.selectedStateIndex = candidateIndex
+      change.section9After = selectedCandidate.city
+      change.section10After = selectedCandidate.plz || change.section10After
+      change.section11After = selectedCandidate.state
+      
+      // Tags aktualisieren
+      change.tagsToAdd = [
+        `ort:${normalizeForTag(selectedCandidate.city)}`,
+        `bl:${normalizeForTag(selectedCandidate.state)}`
+      ]
+      
+      // newLine aktualisieren
+      const sections = change.originalLine.split(';')
+      sections[8] = selectedCandidate.city
+      sections[9] = selectedCandidate.plz || sections[9]
+      sections[10] = selectedCandidate.state
+      change.newLine = sections.join(';')
+      
+      // Change-Type auf city-to-state setzen (kein error mehr)
+      change.changeType = 'city-to-state'
+      change.errorMessage = undefined
+      
+      console.log(`[LocationDialog] User selected: ${selectedCandidate.city} (${selectedCandidate.state})`)
+    }
+    
+    setChanges(updatedChanges)
+  }
+
   useEffect(() => {
     loadChanges()
   }, [])
@@ -134,10 +188,10 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
       setChanges(analyzedChanges)
       console.log('[LocationDialog] Changes state updated')
       
-      // Automatisch alle erfolgreichen Änderungen auswählen
+      // Automatisch alle erfolgreichen Änderungen auswählen (außer multiple-matches)
       const autoSelected = new Set<number>()
       analyzedChanges.forEach((change, index) => {
-        if (change.changeType !== 'error' && change.changeType !== 'no-change') {
+        if (change.changeType !== 'error' && change.changeType !== 'no-change' && change.changeType !== 'multiple-matches') {
           autoSelected.add(index)
         }
       })
@@ -247,13 +301,19 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
                 key={index} 
                 className={`flex items-start gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 ${
                   change.changeType === 'error' ? 'bg-red-50 dark:bg-red-900 dark:bg-opacity-10' : ''
+                } ${
+                  change.changeType === 'multiple-matches' ? 'bg-orange-50 dark:bg-orange-900 dark:bg-opacity-10' : ''
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={selectedChanges.has(index)}
                   onChange={() => toggleChange(index)}
-                  disabled={change.changeType === 'error' || change.changeType === 'no-change'}
+                  disabled={
+                    change.changeType === 'error' || 
+                    change.changeType === 'no-change' ||
+                    (change.changeType === 'multiple-matches' && change.selectedStateIndex === undefined)
+                  }
                   className="mt-1 w-4 h-4"
                 />
                 
@@ -262,23 +322,56 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
                     Notiz: "{truncateTitle(change.noteTitle)}"
                   </div>
                   
-                  {change.errorMessage ? (
+                  {change.changeType === 'multiple-matches' ? (
+                    <div className="mt-2">
+                      <div className="text-orange-600 dark:text-orange-400 font-semibold mb-2 flex items-center gap-2">
+                        <span className="text-lg">⚠️</span>
+                        <span>Mehrere Orte gefunden - bitte wählen:</span>
+                      </div>
+                      
+                      <select 
+                        className="w-full border border-orange-300 dark:border-orange-700 rounded px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-orange-500"
+                        value={change.selectedStateIndex ?? ''}
+                        onChange={(e) => handleStateSelection(index, parseInt(e.target.value))}
+                      >
+                        <option value="">-- Bitte Bundesland auswählen --</option>
+                        {change.candidateStates?.map((candidate, i) => (
+                          <option key={i} value={i}>
+                            {candidate.city} ({candidate.state})
+                            {candidate.plz ? ` - PLZ: ${candidate.plz}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      
+                      {change.selectedStateIndex !== undefined && (
+                        <div className="mt-2 p-2 bg-green-50 dark:bg-green-900 dark:bg-opacity-20 rounded">
+                          <div className="text-green-700 dark:text-green-300 text-xs font-semibold mb-1">
+                            ✓ Auswahl getroffen
+                          </div>
+                          <DiffDisplay 
+                            before={`${change.section9Before};${change.section10Before};${change.section11Before}`}
+                            after={`${change.section9After};${change.section10After};${change.section11After}`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : change.errorMessage ? (
                     <div className="text-red-700 dark:text-red-300">
-                      Fehler: {change.errorMessage}
+                      ❌ Fehler: {change.errorMessage}
                     </div>
                   ) : (
                     <>
                       <div className="mb-1 text-gray-600 dark:text-gray-400 text-xs">
                         Änderung:
                       </div>
-                      <DetailedDiffDisplay 
+                      <DiffDisplay 
                         before={`${change.section9Before};${change.section10Before};${change.section11Before}`}
                         after={`${change.section9After};${change.section10After};${change.section11After}`}
                       />
                       
                       {change.tagsToAdd.length > 0 && (
-                        <div className="mt-1 flex gap-1 flex-wrap">
-                          <span className="text-gray-600 dark:text-gray-400">Tags:</span>
+                        <div className="mt-2 flex gap-1 flex-wrap items-center">
+                          <span className="text-gray-600 dark:text-gray-400 text-xs">Tags:</span>
                           {change.tagsToAdd.map((tag, i) => (
                             <span 
                               key={i} 

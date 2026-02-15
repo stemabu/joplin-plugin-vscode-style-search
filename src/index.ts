@@ -394,6 +394,17 @@ function parseMusliLine(noteBody: string): { line: string; sections: string[]; d
   }
 }
 
+// Hilfs-Funktion für Tag-Normalisierung
+function normalizeForTag(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]/g, '')
+}
+
 const handler = {
   search: searchNotes,
   openNote: async (noteId: string, line?: number) => {
@@ -606,200 +617,218 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
 
   analyzeLocationData: async (noteIds: string[]): Promise<any[]> => {
     console.log(`[LocationProcessing] ============================================`)
-    console.log(`[LocationProcessing] START: analyzeLocationData called`)
-    console.log(`[LocationProcessing] Received ${noteIds.length} note IDs:`, noteIds)
-    console.log(`[LocationProcessing] ============================================`)
+    console.log(`[LocationProcessing] START: analyzeLocationData`)
+    console.log(`[LocationProcessing] Analyzing ${noteIds.length} notes`)
     
     const changes: any[] = []
     
-    // Maximum 100 notes
-    const limitedNoteIds = noteIds.slice(0, 100)
-    
-    console.log(`[LocationProcessing] Processing ${limitedNoteIds.length} notes (limited)`)
-    
-    for (const noteId of limitedNoteIds) {
-      console.log(`[LocationProcessing] --------------------------------------------`)
-      console.log(`[LocationProcessing] Processing note: ${noteId}`)
-      
+    for (const noteId of noteIds) {
       try {
-        console.log(`[LocationProcessing] Fetching note data from Joplin API...`)
-        const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body'] })
-        console.log(`[LocationProcessing] Note loaded: "${note.title}"`)
-        console.log(`[LocationProcessing] Body length: ${note.body?.length || 0} characters`)
+        const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body', 'parent_id'] })
         
-        console.log(`[LocationProcessing] Parsing MusliStart line...`)
-        const parsed = parseMusliLine(note.body)
+        // MusliStart-Zeile finden
+        const lines = note.body.split('\n')
+        const musliStartLine = lines.find(line => line.includes('MusliStart'))
         
-        if (!parsed) {
-          console.log(`[LocationProcessing] No MusliStart line found in note "${note.title}"`)
+        if (!musliStartLine) {
+          console.log(`[LocationProcessing] Note ${noteId}: No MusliStart line found - skipping`)
           continue
         }
         
-        const { line, sections, decodedLine } = parsed
+        // Decode HTML entities
+        const decodedLine = decodeHtmlEntities(musliStartLine)
+        const sections = decodedLine.split(';')
         
-        console.log(`[LocationProcessing] ✓ Found MusliStart line with ${sections.length} sections`)
-        console.log(`[LocationProcessing] Original line: ${line}`)
-        console.log(`[LocationProcessing] Decoded line: ${decodedLine}`)
-        console.log(`[LocationProcessing] Sections array:`, JSON.stringify(sections, null, 2))
+        // 9. Abschnitt = Ort, 10. Abschnitt = PLZ, 11. Abschnitt = Bundesland
+        const ort = sections[8]?.trim() || ''
+        const plz = sections[9]?.trim() || ''
+        const bundesland = sections[10]?.trim() || ''
         
-        // Check if enough sections (minimum 11)
-        if (sections.length < 11) {
-          const errorMsg = `Nicht genügend Abschnitte in der MusliStart-Zeile (${sections.length} statt mindestens 11)`
-          console.error(`[LocationProcessing] ${errorMsg}`)
+        console.log(`[LocationProcessing] Note ${noteId} (${note.title}): Ort="${ort}", PLZ="${plz}", Bundesland="${bundesland}"`)
+        
+        // NEU: Nur skippen wenn ALLE DREI Felder vorhanden sind
+        if (ort && plz && bundesland) {
+          console.log(`[LocationProcessing] Note ${noteId}: All location data complete - skipping`)
+          continue
+        }
+        
+        // Ab hier: Mindestens ein Feld fehlt
+        
+        let changeType: any = 'no-change'
+        let errorMessage: string | undefined
+        let tagsToAdd: string[] = []
+        let newOrt = ort
+        let newPlz = plz
+        let newBundesland = bundesland
+        let candidateStates: Array<{ city: string; state: string; plz?: string }> | undefined
+        
+        // === Fall 1: Nur PLZ vorhanden → PLZ-Lookup für Ort + Bundesland ===
+        if (!ort && plz && !bundesland) {
+          console.log(`[LocationProcessing] Case 1: Only PLZ "${plz}" - looking up city and state`)
+          
+          try {
+            const response = await httpsGet(`https://api.zippopotam.us/de/${plz}`)
+            
+            if (response && response.places && response.places.length > 0) {
+              newOrt = response.places[0]['place name']
+              newBundesland = response.places[0]['state']
+              changeType = 'plz-to-city'
+              
+              console.log(`[LocationProcessing] PLZ ${plz} → City: ${newOrt}, State: ${newBundesland}`)
+              
+              // Tags erstellen
+              tagsToAdd.push(`ort:${normalizeForTag(newOrt)}`)
+              tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
+            } else {
+              errorMessage = `Keine Daten für PLZ ${plz}`
+              changeType = 'error'
+            }
+          } catch (error) {
+            console.error(`[LocationProcessing] Error fetching PLZ ${plz}:`, error)
+            errorMessage = `API-Fehler bei PLZ ${plz}`
+            changeType = 'error'
+          }
+        }
+        
+        // === Fall 2: Ort + PLZ vorhanden, aber kein Bundesland → PLZ-Lookup (genauer!) ===
+        else if (ort && plz && !bundesland) {
+          console.log(`[LocationProcessing] Case 2: City "${ort}" and PLZ "${plz}" - looking up state via PLZ`)
+          
+          try {
+            const response = await httpsGet(`https://api.zippopotam.us/de/${plz}`)
+            
+            if (response && response.places && response.places.length > 0) {
+              newBundesland = response.places[0]['state']
+              changeType = 'plz-to-state'
+              
+              console.log(`[LocationProcessing] PLZ ${plz} → State: ${newBundesland}`)
+              
+              // Tag für Bundesland
+              tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
+              
+              // Ort-Tag falls noch nicht vorhanden
+              tagsToAdd.push(`ort:${normalizeForTag(ort)}`)
+            } else {
+              errorMessage = `Keine Daten für PLZ ${plz}`
+              changeType = 'error'
+            }
+          } catch (error) {
+            console.error(`[LocationProcessing] Error fetching PLZ ${plz}:`, error)
+            errorMessage = `API-Fehler bei PLZ ${plz}`
+            changeType = 'error'
+          }
+        }
+        
+        // === Fall 3: Nur Ort vorhanden → Ort-Lookup mit EXAKTEM Match ===
+        else if (ort && !plz && !bundesland) {
+          console.log(`[LocationProcessing] Case 3: Only city "${ort}" - looking up with exact match`)
+          
+          try {
+            // API-Suche nach Ort (gibt alle Matches zurück)
+            const response = await httpsGet(`https://api.zippopotam.us/de/search/${encodeURIComponent(ort)}`)
+            
+            if (!response || !response.results || response.results.length === 0) {
+              errorMessage = `Ort "${ort}" nicht gefunden`
+              changeType = 'error'
+            } else {
+              // NEU: EXAKTER String-Match
+              const exactMatches = response.results.filter((result: any) => 
+                result.city.toLowerCase() === ort.toLowerCase()
+              )
+              
+              console.log(`[LocationProcessing] Found ${response.results.length} total results, ${exactMatches.length} exact matches for "${ort}"`)
+              
+              if (exactMatches.length === 0) {
+                // Kein exakter Match gefunden
+                errorMessage = `Kein exakter Match für "${ort}" gefunden`
+                changeType = 'error'
+              } else if (exactMatches.length === 1) {
+                // Eindeutiger Match!
+                const match = exactMatches[0]
+                newPlz = match.zipcode
+                newBundesland = match.state
+                changeType = 'city-to-state'
+                
+                console.log(`[LocationProcessing] Unique match: ${ort} → PLZ: ${newPlz}, State: ${newBundesland}`)
+                
+                // Tags erstellen
+                tagsToAdd.push(`ort:${normalizeForTag(ort)}`)
+                tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
+              } else {
+                // MEHRERE exakte Matches → Mehrdeutigkeit!
+                console.log(`[LocationProcessing] Multiple matches for "${ort}":`, exactMatches)
+                
+                changeType = 'multiple-matches'
+                
+                // Kandidaten sammeln
+                candidateStates = exactMatches.map((match: any) => ({
+                  city: match.city,
+                  state: match.state,
+                  plz: match.zipcode
+                }))
+                
+                // Duplikate nach Bundesland entfernen
+                const uniqueStates = new Map<string, typeof candidateStates[0]>()
+                candidateStates.forEach(candidate => {
+                  if (!uniqueStates.has(candidate.state)) {
+                    uniqueStates.set(candidate.state, candidate)
+                  }
+                })
+                candidateStates = Array.from(uniqueStates.values())
+                
+                console.log(`[LocationProcessing] ${candidateStates.length} unique states for "${ort}":`, candidateStates)
+              }
+            }
+          } catch (error) {
+            console.error(`[LocationProcessing] Error fetching city "${ort}":`, error)
+            errorMessage = `API-Fehler bei Ort "${ort}"`
+            changeType = 'error'
+          }
+        }
+        
+        // === Fall 4: Andere Kombinationen (sollte nicht vorkommen) ===
+        else {
+          console.log(`[LocationProcessing] Unexpected combination - skipping`)
+          continue
+        }
+        
+        // Change-Objekt erstellen (nur wenn nicht 'no-change')
+        if (changeType !== 'no-change') {
+          const newSections = [...sections]
+          newSections[8] = newOrt
+          newSections[9] = newPlz
+          newSections[10] = newBundesland
+          
+          const newDecodedLine = newSections.join(';')
+          const newLine = newDecodedLine
           
           changes.push({
             noteId: note.id,
             noteTitle: note.title,
-            originalLine: decodedLine,  // Show decoded line
-            newLine: decodedLine,
-            tagsToAdd: [],
-            changeType: 'error',
-            errorMessage: errorMsg,
+            originalLine: decodedLine,
+            newLine: newDecodedLine,
+            tagsToAdd: tagsToAdd,
+            changeType: changeType,
+            errorMessage: errorMessage,
+            _originalHtmlLine: musliStartLine,
+            _newHtmlLine: newLine,
             section9Before: sections[8] || '',
             section10Before: sections[9] || '',
             section11Before: sections[10] || '',
-            section9After: sections[8] || '',
-            section10After: sections[9] || '',
-            section11After: sections[10] || '',
+            section9After: newSections[8] || '',
+            section10After: newSections[9] || '',
+            section11After: newSections[10] || '',
+            candidateStates: candidateStates,
+            selectedStateIndex: undefined
           })
-          continue
         }
-        
-        const ninthSection = sections[8]?.trim()  // Index 8 = 9th section (Ort)
-        const tenthSection = sections[9]?.trim()  // Index 9 = 10th section (PLZ)
-        const eleventhSection = sections[10]?.trim()  // Index 10 = 11th section (Bundesland)
-        
-        console.log(`[LocationProcessing] 9th section (index 8): "${ninthSection}"`)
-        console.log(`[LocationProcessing] 10th section (index 9): "${tenthSection}"`)
-        console.log(`[LocationProcessing] 11th section (index 10): "${eleventhSection}"`)
-        
-        // NEU: Wenn Ort UND PLZ bereits vorhanden sind, überspringen
-        if (ninthSection && ninthSection !== 'plz' && tenthSection) {
-          console.log(`[LocationProcessing] Note ${noteId} (${note.title}): Already has city "${ninthSection}" and PLZ "${tenthSection}" - skipping`)
-          continue
-        }
-        
-        let newSections = [...sections]
-        let tagsToAdd: string[] = []
-        let changeType: any = 'no-change'
-        let errorMessage: string | undefined
-        
-        if (ninthSection === 'plz') {
-          console.log(`[LocationProcessing] Processing PLZ mode`)
-          
-          // Case 1: PLZ -> determine city name
-          const plz = tenthSection
-          const state = eleventhSection
-          
-          if (!plz) {
-            errorMessage = '10. Abschnitt (PLZ) fehlt'
-            changeType = 'error'
-            console.error(`[LocationProcessing] ${errorMessage}`)
-          } else if (!GERMAN_STATES.includes(state)) {
-            errorMessage = `11. Abschnitt enthält kein gültiges Bundesland: "${state}"`
-            changeType = 'error'
-            console.error(`[LocationProcessing] ${errorMessage}`)
-            console.log(`[LocationProcessing] Valid states are:`, GERMAN_STATES)
-          } else {
-            console.log(`[LocationProcessing] Fetching location for PLZ ${plz}`)
-            const locationData = await getLocationByPlz(plz)
-            
-            if (locationData) {
-              console.log(`[LocationProcessing] Found location:`, locationData)
-              newSections[8] = locationData.name  // Replace PLZ with city name
-              const cityTag = `ort:${locationData.name.toLowerCase().replace(/\s+/g, '')}`
-              const stateTag = `bl:${state.toLowerCase().replace(/\s+/g, '')}`
-              tagsToAdd.push(cityTag)
-              tagsToAdd.push(stateTag)
-              changeType = 'plz-to-city'
-            } else {
-              errorMessage = `Konnte keinen Ort für PLZ ${plz} finden`
-              changeType = 'error'
-              console.error(`[LocationProcessing] ${errorMessage}`)
-            }
-          }
-        } else if (ninthSection && ninthSection !== 'plz') {
-          console.log(`[LocationProcessing] Processing city-to-state mode`)
-          
-          // Case 2: City name -> determine state
-          const cityName = ninthSection
-          console.log(`[LocationProcessing] Fetching state for city ${cityName}`)
-          const state = await getStateByCity(cityName)
-          
-          if (state) {
-            console.log(`[LocationProcessing] Found state: ${state}`)
-            newSections[10] = state  // Insert state in 11th section
-            const cityTag = `ort:${cityName.toLowerCase().replace(/\s+/g, '')}`
-            const stateTag = `bl:${state.toLowerCase().replace(/\s+/g, '')}`
-            tagsToAdd.push(cityTag)
-            tagsToAdd.push(stateTag)
-            changeType = 'city-to-state'
-          } else {
-            errorMessage = `Konnte kein Bundesland für Ort "${cityName}" finden`
-            changeType = 'error'
-            console.error(`[LocationProcessing] ${errorMessage}`)
-          }
-        }
-        
-        // Create new line with decoded content
-        const newDecodedLine = `MusliStart-${newSections.join(';')}-MusliEnde`
-        
-        // For the replace in body we need to use the original HTML line
-        const newLine = newDecodedLine  // Will be used later
-        
-        console.log(`[LocationProcessing] Change type: ${changeType}`)
-        console.log(`[LocationProcessing] New line: ${newDecodedLine}`)
-        console.log(`[LocationProcessing] Tags to add:`, tagsToAdd)
-        
-        // Extract section data for compact display
-        const section9Before = sections[8] || ''
-        const section10Before = sections[9] || ''
-        const section11Before = sections[10] || ''
-        const section9After = newSections[8] || ''
-        const section10After = newSections[9] || ''
-        const section11After = newSections[10] || ''
-        
-        changes.push({
-          noteId: note.id,
-          noteTitle: note.title,
-          originalLine: decodedLine,  // Show decoded version
-          newLine: newDecodedLine,     // Show decoded version
-          tagsToAdd: tagsToAdd,
-          changeType: changeType,
-          errorMessage: errorMessage,
-          _originalHtmlLine: line,     // Save original for replace
-          _newHtmlLine: newLine,        // Will be encoded later if needed
-          section9Before,
-          section10Before,
-          section11Before,
-          section9After,
-          section10After,
-          section11After,
-        })
         
       } catch (error) {
-        console.error(`[LocationProcessing] ERROR processing note ${noteId}:`, error)
-        console.error(`[LocationProcessing] Error stack:`, error.stack)
-        changes.push({
-          noteId: noteId,
-          noteTitle: 'Fehler beim Laden',
-          originalLine: '',
-          newLine: '',
-          tagsToAdd: [],
-          changeType: 'error',
-          errorMessage: error.message || 'Unbekannter Fehler',
-          section9Before: '',
-          section10Before: '',
-          section11Before: '',
-          section9After: '',
-          section10After: '',
-          section11After: '',
-        })
+        console.error(`[LocationProcessing] Error analyzing note ${noteId}:`, error)
       }
     }
     
-    console.log(`[LocationProcessing] ============================================`)
-    console.log(`[LocationProcessing] FINISHED: Total changes found: ${changes.length}`)
+    console.log(`[LocationProcessing] Found ${changes.length} notes that need updates`)
     console.log(`[LocationProcessing] ============================================`)
     
     return changes
@@ -849,8 +878,14 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
       console.log(`[LocationProcessing] Note ID: ${change.noteId}`)
       console.log(`[LocationProcessing] Change type: ${change.changeType}`)
       
+      // Skip Fehler und mehrdeutige ohne Auswahl
       if (change.changeType === 'error' || change.changeType === 'no-change') {
         console.log(`[LocationProcessing] Skipping (type: ${change.changeType})`)
+        continue
+      }
+      
+      if (change.changeType === 'multiple-matches' && change.selectedStateIndex === undefined) {
+        console.log(`[LocationProcessing] Skipping multiple-matches without selection for ${change.noteId}`)
         continue
       }
       
