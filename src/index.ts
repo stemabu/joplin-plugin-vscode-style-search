@@ -646,18 +646,18 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
       try {
         const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body', 'parent_id'] })
         
-        // MusliStart-Zeile finden
-        const lines = note.body.split('\n')
-        const musliStartLine = lines.find(line => line.includes('MusliStart'))
-        
-        if (!musliStartLine) {
+       // MusliStart-Zeile parsen
+       const parsed = parseMusliLine(note.body)
+
+       if (!parsed) {
           console.log(`[LocationProcessing] Note ${noteId}: No MusliStart line found - skipping`)
           continue
         }
-        
-        // Decode HTML entities
-        const decodedLine = decodeHtmlEntities(musliStartLine)
-        const sections = decodedLine.split(';')
+
+        // Extrahierte Daten
+       const sections = parsed.sections
+       const musliStartLine = parsed.line
+       const decodedLine = parsed.decodedLine
         
         // 9. Abschnitt = Ort, 10. Abschnitt = PLZ, 11. Abschnitt = Bundesland
         const ort = sections[8]?.trim() || ''
