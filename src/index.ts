@@ -6,6 +6,23 @@ import { RpcMethods } from './shared/rpcTypes'
 import { SettingItemType } from 'api/types'
 import https from 'https'
 
+// ============================================
+// API CONFIGURATION
+// ============================================
+// CRITICAL: Only openplzapi.org is allowed!
+// DO NOT use any other API (e.g., zippopotam.us)
+const ALLOWED_API_BASE = 'openplzapi.org'
+
+// Runtime check to prevent wrong API usage
+function validateApiUrl(url: string): void {
+  if (!url.includes(ALLOWED_API_BASE)) {
+    console.error(`[LocationAPI] CRITICAL ERROR: Wrong API used!`)
+    console.error(`[LocationAPI] Only ${ALLOWED_API_BASE} is allowed!`)
+    console.error(`[LocationAPI] Attempted URL: ${url}`)
+    throw new Error(`API validation failed: Only ${ALLOWED_API_BASE} is allowed, but got: ${url}`)
+  }
+}
+// ============================================
 
 export interface SearchQueryOptions {
   searchText: string
@@ -258,6 +275,9 @@ function decodeHtmlEntities(text: string): string {
 // Helper function for HTTPS GET requests
 function httpsGet(url: string): Promise<any> {
   console.log(`[LocationAPI] Making HTTPS GET request to: ${url}`)
+  
+  // CRITICAL: Validate API URL before making request
+  validateApiUrl(url)
   
   return new Promise((resolve, reject) => {
     const request = https.get(url, (res) => {
@@ -667,11 +687,11 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           console.log(`[LocationProcessing] Case 1: Only PLZ "${plz}" - looking up city and state`)
           
           try {
-            const response = await httpsGet(`https://api.zippopotam.us/de/${plz}`)
+            const location = await getLocationByPlz(plz)
             
-            if (response && response.places && response.places.length > 0) {
-              newOrt = response.places[0]['place name']
-              newBundesland = response.places[0]['state']
+            if (location) {
+              newOrt = location.name
+              newBundesland = location.state
               changeType = 'plz-to-city'
               
               console.log(`[LocationProcessing] PLZ ${plz} → City: ${newOrt}, State: ${newBundesland}`)
@@ -680,12 +700,12 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
               tagsToAdd.push(`ort:${normalizeForTag(newOrt)}`)
               tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
             } else {
-              errorMessage = `Keine Daten für PLZ ${plz}`
+              errorMessage = `Keine Daten für PLZ ${plz} gefunden`
               changeType = 'error'
             }
           } catch (error) {
             console.error(`[LocationProcessing] Error fetching PLZ ${plz}:`, error)
-            errorMessage = `API-Fehler bei PLZ ${plz}`
+            errorMessage = `API-Fehler bei PLZ ${plz}: ${error.message}`
             changeType = 'error'
           }
         }
@@ -695,10 +715,10 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           console.log(`[LocationProcessing] Case 2: City "${ort}" and PLZ "${plz}" - looking up state via PLZ`)
           
           try {
-            const response = await httpsGet(`https://api.zippopotam.us/de/${plz}`)
+            const location = await getLocationByPlz(plz)
             
-            if (response && response.places && response.places.length > 0) {
-              newBundesland = response.places[0]['state']
+            if (location) {
+              newBundesland = location.state
               changeType = 'plz-to-state'
               
               console.log(`[LocationProcessing] PLZ ${plz} → State: ${newBundesland}`)
@@ -709,12 +729,12 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
               // Ort-Tag falls noch nicht vorhanden
               tagsToAdd.push(`ort:${normalizeForTag(ort)}`)
             } else {
-              errorMessage = `Keine Daten für PLZ ${plz}`
+              errorMessage = `Keine Daten für PLZ ${plz} gefunden`
               changeType = 'error'
             }
           } catch (error) {
             console.error(`[LocationProcessing] Error fetching PLZ ${plz}:`, error)
-            errorMessage = `API-Fehler bei PLZ ${plz}`
+            errorMessage = `API-Fehler bei PLZ ${plz}: ${error.message}`
             changeType = 'error'
           }
         }
@@ -724,19 +744,23 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           console.log(`[LocationProcessing] Case 3: Only city "${ort}" - looking up with exact match`)
           
           try {
-            // API-Suche nach Ort (gibt alle Matches zurück)
-            const response = await httpsGet(`https://api.zippopotam.us/de/search/${encodeURIComponent(ort)}`)
+            // Nutze openplzapi.org für Orts-Suche
+            const encodedCity = encodeURIComponent(ort)
+            const url = `https://openplzapi.org/de/Localities?name=${encodedCity}`
+            const data = await httpsGet(url)
             
-            if (!response || !response.results || response.results.length === 0) {
+            console.log(`[LocationProcessing] API returned ${data?.length || 0} results for "${ort}"`)
+            
+            if (!data || !Array.isArray(data) || data.length === 0) {
               errorMessage = `Ort "${ort}" nicht gefunden`
               changeType = 'error'
             } else {
-              // NEU: EXAKTER String-Match
-              const exactMatches = response.results.filter((result: any) => 
-                result.city.toLowerCase() === ort.toLowerCase()
+              // EXAKTER String-Match (case-insensitive)
+              const exactMatches = data.filter((locality: any) => 
+                locality.name && locality.name.toLowerCase() === ort.toLowerCase()
               )
               
-              console.log(`[LocationProcessing] Found ${response.results.length} total results, ${exactMatches.length} exact matches for "${ort}"`)
+              console.log(`[LocationProcessing] Found ${data.length} total results, ${exactMatches.length} exact matches for "${ort}"`)
               
               if (exactMatches.length === 0) {
                 // Kein exakter Match gefunden
@@ -745,27 +769,35 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
               } else if (exactMatches.length === 1) {
                 // Eindeutiger Match!
                 const match = exactMatches[0]
-                newPlz = match.zipcode
-                newBundesland = match.state
-                changeType = 'city-to-state'
                 
-                console.log(`[LocationProcessing] Unique match: ${ort} → PLZ: ${newPlz}, State: ${newBundesland}`)
-                
-                // Tags erstellen
-                tagsToAdd.push(`ort:${normalizeForTag(ort)}`)
-                tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
+                if (!match.postalCode || !match.federalState?.name) {
+                  errorMessage = `Unvollständige Daten für "${ort}"`
+                  changeType = 'error'
+                } else {
+                  newPlz = match.postalCode
+                  newBundesland = match.federalState.name
+                  changeType = 'city-to-state'
+                  
+                  console.log(`[LocationProcessing] Unique match: ${ort} → PLZ: ${newPlz}, State: ${newBundesland}`)
+                  
+                  // Tags erstellen
+                  tagsToAdd.push(`ort:${normalizeForTag(ort)}`)
+                  tagsToAdd.push(`bl:${normalizeForTag(newBundesland)}`)
+                }
               } else {
                 // MEHRERE exakte Matches → Mehrdeutigkeit!
-                console.log(`[LocationProcessing] Multiple matches for "${ort}":`, exactMatches)
+                console.log(`[LocationProcessing] Multiple exact matches for "${ort}"`)
                 
                 changeType = 'multiple-matches'
                 
                 // Kandidaten sammeln
-                candidateStates = exactMatches.map((match: any) => ({
-                  city: match.city,
-                  state: match.state,
-                  plz: match.zipcode
-                }))
+                candidateStates = exactMatches
+                  .filter((locality: any) => locality.postalCode && locality.federalState?.name)
+                  .map((locality: any) => ({
+                    city: locality.name,
+                    state: locality.federalState.name,
+                    plz: locality.postalCode
+                  }))
                 
                 // Duplikate nach Bundesland entfernen
                 const uniqueStates = new Map<string, typeof candidateStates[0]>()
@@ -777,11 +809,16 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
                 candidateStates = Array.from(uniqueStates.values())
                 
                 console.log(`[LocationProcessing] ${candidateStates.length} unique states for "${ort}":`, candidateStates)
+                
+                if (candidateStates.length === 0) {
+                  errorMessage = `Keine gültigen Daten für "${ort}" gefunden`
+                  changeType = 'error'
+                }
               }
             }
           } catch (error) {
             console.error(`[LocationProcessing] Error fetching city "${ort}":`, error)
-            errorMessage = `API-Fehler bei Ort "${ort}"`
+            errorMessage = `API-Fehler bei Ort "${ort}": ${error.message}`
             changeType = 'error'
           }
         }
