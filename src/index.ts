@@ -665,13 +665,19 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
           continue
         }
         
-        const ninthSection = sections[8]?.trim()  // Index 8 = 9th section
-        const tenthSection = sections[9]?.trim()  // Index 9 = 10th section
-        const eleventhSection = sections[10]?.trim()  // Index 10 = 11th section
+        const ninthSection = sections[8]?.trim()  // Index 8 = 9th section (Ort)
+        const tenthSection = sections[9]?.trim()  // Index 9 = 10th section (PLZ)
+        const eleventhSection = sections[10]?.trim()  // Index 10 = 11th section (Bundesland)
         
         console.log(`[LocationProcessing] 9th section (index 8): "${ninthSection}"`)
         console.log(`[LocationProcessing] 10th section (index 9): "${tenthSection}"`)
         console.log(`[LocationProcessing] 11th section (index 10): "${eleventhSection}"`)
+        
+        // NEU: Wenn Ort UND PLZ bereits vorhanden sind, überspringen
+        if (ninthSection && ninthSection !== 'plz' && tenthSection) {
+          console.log(`[LocationProcessing] Note ${noteId} (${note.title}): Already has city "${ninthSection}" and PLZ "${tenthSection}" - skipping`)
+          continue
+        }
         
         let newSections = [...sections]
         let tagsToAdd: string[] = []

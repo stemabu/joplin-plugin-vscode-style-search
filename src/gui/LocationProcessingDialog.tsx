@@ -22,6 +22,65 @@ interface LocationProcessingDialogProps {
   onClose: () => void
 }
 
+// NEU: Diff-Komponente für visuelles Highlighting
+interface DiffDisplayProps {
+  before: string
+  after: string
+}
+
+function DiffDisplay({ before, after }: DiffDisplayProps) {
+  // Einfache Logik: Zeige beide Werte mit Farb-Highlighting
+  return (
+    <div className="font-mono text-sm">
+      <span className="bg-red-100 dark:bg-red-900 dark:bg-opacity-30 text-red-700 dark:text-red-300 line-through px-1">
+        {before}
+      </span>
+      <span className="mx-2">→</span>
+      <span className="bg-green-100 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300 px-1">
+        {after}
+      </span>
+    </div>
+  )
+}
+
+// Erweiterte Version: Zeichen-genaues Diff
+function DetailedDiffDisplay({ before, after }: DiffDisplayProps) {
+  // Split in Abschnitte
+  const beforeParts = before.split(';')
+  const afterParts = after.split(';')
+  
+  return (
+    <div className="font-mono text-sm flex flex-wrap items-center gap-1">
+      {beforeParts.map((part, i) => {
+        const afterPart = afterParts[i] || ''
+        
+        if (part === afterPart) {
+          // Unverändert
+          return (
+            <span key={`unchanged-${i}`} className="text-gray-600 dark:text-gray-400">
+              {part}{i < beforeParts.length - 1 ? ';' : ''}
+            </span>
+          )
+        } else {
+          // Geändert
+          return (
+            <span key={`changed-${i}`} className="inline-flex items-center gap-1">
+              <span className="bg-red-100 dark:bg-red-900 dark:bg-opacity-30 text-red-700 dark:text-red-300 line-through px-1">
+                {part}
+              </span>
+              <span className="text-gray-500">→</span>
+              <span className="bg-green-100 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300 px-1">
+                {afterPart}
+              </span>
+              {i < beforeParts.length - 1 && <span className="text-gray-600">;</span>}
+            </span>
+          )
+        }
+      })}
+    </div>
+  )
+}
+
 export default function LocationProcessingDialog({ client, onClose }: LocationProcessingDialogProps) {
   const [changes, setChanges] = useState<LocationChange[]>([])
   const [loading, setLoading] = useState(false)
@@ -209,11 +268,13 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
                     </div>
                   ) : (
                     <>
-                      <div className={`font-mono ${getChangeColor(change.changeType)}`}>
-                        Änderung: {change.section9Before}; {change.section10Before}; {change.section11Before} 
-                        <span className="mx-2">→</span>
-                        {change.section9After}; {change.section10After}; {change.section11After}
+                      <div className="mb-1 text-gray-600 dark:text-gray-400 text-xs">
+                        Änderung:
                       </div>
+                      <DetailedDiffDisplay 
+                        before={`${change.section9Before};${change.section10Before};${change.section11Before}`}
+                        after={`${change.section9After};${change.section10After};${change.section11After}`}
+                      />
                       
                       {change.tagsToAdd.length > 0 && (
                         <div className="mt-1 flex gap-1 flex-wrap">
