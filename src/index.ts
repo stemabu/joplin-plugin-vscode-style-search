@@ -830,10 +830,6 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
        changeType = 'error'
        }
                 
-                if (candidateStates.length === 0) {
-                  errorMessage = `Keine gültigen Daten für "${ort}" gefunden`
-                  changeType = 'error'
-                }
               }
             }
           } catch (error) {
