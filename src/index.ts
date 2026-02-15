@@ -648,11 +648,13 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
         
        // MusliStart-Zeile parsen
        const parsed = parseMusliLine(note.body)
-
+		  
        if (!parsed) {
-          console.log(`[LocationProcessing] Note ${noteId}: No MusliStart line found - skipping`)
-          continue
-        }
+           console.log(`[LocationProcessing] Note ${noteId}: No MusliStart line found - skipping`)
+           console.log(`[LocationProcessing] Body contains 'MusliStart': ${note.body.includes('MusliStart')}`)
+           console.log(`[LocationProcessing] Body preview: ${note.body.substring(0, 300)}...`)
+       continue
+       }      
 
         // Extrahierte Daten
        const sections = parsed.sections
