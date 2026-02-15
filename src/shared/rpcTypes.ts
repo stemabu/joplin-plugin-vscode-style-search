@@ -4,18 +4,26 @@ export interface LocationChange {
   originalLine: string
   newLine: string
   tagsToAdd: string[]
-  changeType: 'plz-to-city' | 'city-to-state' | 'no-change' | 'error'
+  changeType: 'plz-to-city' | 'city-to-state' | 'plz-to-state' | 'multiple-matches' | 'no-change' | 'error'
   errorMessage?: string
   _originalHtmlLine?: string  // Internes Feld
   _newHtmlLine?: string        // Internes Feld
   
   // Optional: Für kompakte Anzeige
-  section9Before?: string  // 9. Abschnitt vorher
-  section10Before?: string // 10. Abschnitt vorher
-  section11Before?: string // 11. Abschnitt vorher
-  section9After?: string   // 9. Abschnitt nachher
-  section10After?: string  // 10. Abschnitt nachher
-  section11After?: string  // 11. Abschnitt nachher
+  section9Before?: string  // 9. Abschnitt vorher (Ort)
+  section10Before?: string // 10. Abschnitt vorher (PLZ)
+  section11Before?: string // 11. Abschnitt vorher (Bundesland)
+  section9After?: string   // 9. Abschnitt nachher (Ort)
+  section10After?: string  // 10. Abschnitt nachher (PLZ)
+  section11After?: string  // 11. Abschnitt nachher (Bundesland)
+  
+  // NEU: Für Mehrdeutigkeit
+  candidateStates?: Array<{
+    city: string
+    state: string
+    plz?: string
+  }>
+  selectedStateIndex?: number  // User-Auswahl (Index in candidateStates)
 }
 
 export interface RpcMethods {
