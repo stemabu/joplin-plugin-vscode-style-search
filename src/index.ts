@@ -636,15 +636,22 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
   },
 
   analyzeLocationData: async (noteIds: string[]): Promise<any[]> => {
-    console.log(`[LocationProcessing] ============================================`)
-    console.log(`[LocationProcessing] START: analyzeLocationData`)
-    console.log(`[LocationProcessing] Analyzing ${noteIds.length} notes`)
+  console.log(`[LocationProcessing] ============================================`)
+  console.log(`[LocationProcessing] START: analyzeLocationData`)
+  console.log(`[LocationProcessing] Analyzing ${noteIds.length} notes`)
+  console.log(`[LocationProcessing] Note IDs:`, noteIds)  // ← NEU!
+  
+  const changes: any[] = []
+  
+  console.log(`[LocationProcessing] Starting loop...`)  // ← NEU!
+  
+  for (const noteId of noteIds) {
+    console.log(`[LocationProcessing] Processing note ${noteId}`)  // ← NEU!
     
-    const changes: any[] = []
-    
-    for (const noteId of noteIds) {
-      try {
-        const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body', 'parent_id'] })
+    try {
+      console.log(`[LocationProcessing] Fetching note data...`)  // ← NEU!
+      const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body', 'parent_id'] })
+      console.log(`[LocationProcessing] Note fetched: ${note.title}`)  // ← NEU!
         
        // MusliStart-Zeile parsen
        const parsed = parseMusliLine(note.body)
