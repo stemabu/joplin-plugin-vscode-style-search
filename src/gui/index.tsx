@@ -112,6 +112,7 @@ function App() {
   const [notebookFilterActive, setNotebookFilterActive] = useState<boolean>(false)
   const [tagFilterActive, setTagFilterActive] = useState<boolean>(false)
   const [allTags, setAllTags] = useState<Tag[]>([])
+  const [showTagsInResults, setShowTagsInResults] = useState<boolean>(true)
   
   // Ähnlichkeits-States
   const [similarityAlgorithm, setSimilarityAlgorithm] = useState<SimilarityAlgorithm>('jaccard')
@@ -151,11 +152,21 @@ useEffect(() => {
       const folders = await client.stub.getAllFolders()
       setAllFolders(folders)
       
-      // NEU: Tags laden
-      const tags = await client.stub.getAllTags()
-      // NEU: Alphabetisch sortieren
-      const sortedTags = tags.sort((a, b) => a.title.localeCompare(b.title))
-      setAllTags(sortedTags)
+    const tags = await client.stub.getAllTags()
+
+    // NEU: Wichtige Tags zuerst, dann alphabetisch
+    const priorityTags = ['art', 'clink', 'hsk', 'irrodo', 'mub', 'musenth', 'pdf', 'plz', 'wb']
+    const sortedTags = tags.sort((a, b) => {
+      const aIsPriority = priorityTags.includes(a.title)
+      const bIsPriority = priorityTags.includes(b.title)
+  
+      if (aIsPriority && !bIsPriority) return -1
+      if (!aIsPriority && bIsPriority) return 1
+  
+      // Wenn beide Priority oder beide nicht Priority: alphabetisch
+      return a.title.localeCompare(b.title)
+    })
+    setAllTags(sortedTags)
       
       // Schwellwerte laden
       const loadedThresholds = {
@@ -183,6 +194,9 @@ useEffect(() => {
         setLimitToFolders(limitFolders)
       }
       if (addFolder && addFolder !== '') setAdditionalFolder(addFolder)
+
+      const savedShowTagsInResults = await client.stub.getSetting('showTagsInResults')
+      if (savedShowTagsInResults !== undefined) setShowTagsInResults(savedShowTagsInResults)
       
       // NEU: Filter-Settings laden
       const savedNotebook = await client.stub.getSetting('selectedNotebook')
@@ -477,6 +491,12 @@ useEffect(() => {
     await client.stub.setSetting('tagFilterActive', active)
   }
 
+  // Handler für Checkbox (neue Funktion hinzufügen)
+  const handleShowTagsChange = async (checked: boolean) => {
+    setShowTagsInResults(checked)
+    await client.stub.setSetting('showTagsInResults', checked)
+  }
+
   const handleExecuteMoves = async () => {
     try {
       if (!targetFolder1 || !targetFolder2) {
@@ -711,32 +731,43 @@ if (mode === 'search') {
 
     rendered = (
       <>
-        <div className="flex justify-between">
-          <h3 className="mb-2 text-lg font-bold">
-            {mode === 'search' ? 'Ergebnisse' : 'Ähnliche Notizen'}
-          </h3>
-          <div className="flex">
-          <select
-            value={sortType}
-            onChange={(e) => setSortType(e.target.value as SortType)}
-            className={selectClassname}
-          >
+    <div className="flex justify-between">
+      <h3 className="mb-2 text-lg font-bold">
+        {mode === 'search' ? 'Ergebnisse' : 'Ähnliche Notizen'}
+      </h3>
+      <div className="flex items-center gap-2">
+        {/* NEU: Checkbox für Tag-Anzeige */}
+        <label className="flex items-center gap-1 text-sm">
+          <input
+            type="checkbox"
+            checked={showTagsInResults}
+            onChange={(e) => handleShowTagsChange(e.target.checked)}
+            className="cursor-pointer"
+          />
+          <span>Tags</span>
+        </label>
+    
+        <select
+          value={sortType}
+          onChange={(e) => setSortType(e.target.value as SortType)}
+          className={selectClassname}
+        >
           {mode === 'similarity' && <option value={SortType.Similarity}>Ähnlichkeit</option>}
           {mode === 'search' && <option value={SortType.Relevance}>Relevanz</option>}
           {mode === 'search' && <option value={SortType.Matches}>Treffer</option>}
           <option value={SortType.NoteName}>Notizname</option>
           <option value={SortType.FolderName}>Ordnername</option>
           <option value={SortType.Updated}>Aktualisiert</option>
-          </select>
-            <select
-              value={sortDirection}
-              onChange={(e) => setSortDirection(e.target.value as SortDirection)}
-              disabled={sortType === SortType.Relevance}
-              className={selectClassname}
-            >
-              <option value={SortDirection.Ascending}>Aufsteigend</option>
-              <option value={SortDirection.Descending}>Absteigend</option>
-            </select>
+        </select>
+        <select
+          value={sortDirection}
+          onChange={(e) => setSortDirection(e.target.value as SortDirection)}
+          disabled={sortType === SortType.Relevance}
+          className={selectClassname}
+        >
+          <option value={SortDirection.Ascending}>Aufsteigend</option>
+          <option value={SortDirection.Descending}>Absteigend</option>
+        </select>
             {mode === 'search' && (
               <>
                 <FilterButton
@@ -776,6 +807,7 @@ if (mode === 'search') {
             openNote={async (id, line?: number) => {
               await client.stub.openNote(id, line)
             }}
+            showTags={showTagsInResults} 
           />
         </div>
       </>
