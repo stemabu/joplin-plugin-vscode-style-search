@@ -44,4 +44,6 @@ export interface RpcMethods {
   getSelectedNoteIds(): Promise<string[]>
   closeDialog(): Promise<void>  // NEU
   refreshTagsCache(): Promise<void>  // NEU
+  renameTitles(noteIds: string[]): Promise<any[]>
+  applyTitleChanges(changes: any[]): Promise<void>
 }
