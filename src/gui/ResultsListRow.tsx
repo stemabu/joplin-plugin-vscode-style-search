@@ -16,6 +16,43 @@ import { GenericListItemData } from './GenericList'
 import styles from './ResultsListRow.module.css'
 import { Folder } from 'src'
 
+const BUNDESLAND_ABBREVIATIONS: Record<string, string> = {
+  'bayern': 'Bay',
+  'niedersachsen': 'Nds',
+  'nordrhein-westfalen': 'Nrw',
+  'baden-württemberg': 'Bwü',
+  'baden-wuerttemberg': 'Bwü',
+  'rheinland-pfalz': 'Rlp',
+  'hessen': 'Hes',
+  'sachsen': 'Sac',
+  'thüringen': 'Thü',
+  'thueringen': 'Thü',
+  'schleswig-holstein': 'Sho',
+  'mecklenburg-vorpommern': 'Mvp',
+  'brandenburg': 'Bra',
+  'sachsen-anhalt': 'Sah',
+  'berlin': 'Ber',
+  'hamburg': 'Ham',
+  'bremen': 'Bre',
+  'saarland': 'Saa',
+}
+
+// Hilfsfunktion für Tag-Formatierung
+function formatTag(tagTitle: string): { displayText: string; isBundesland: boolean } {
+  if (tagTitle.startsWith('bl:')) {
+    const bundeslandName = tagTitle.substring(3).toLowerCase().trim()
+    const abbreviation = BUNDESLAND_ABBREVIATIONS[bundeslandName]
+    
+    if (abbreviation) {
+      return { displayText: abbreviation, isBundesland: true }
+    }
+    // Fallback: erste 3 Buchstaben
+    return { displayText: bundeslandName.substring(0, 3).toUpperCase(), isBundesland: true }
+  }
+  
+  return { displayText: tagTitle, isBundesland: false }
+}
+
 export const ITEM_SIZE = 28
 
 export type ItemData = {
@@ -31,6 +68,7 @@ export type ItemData = {
   mode: 'search' | 'similarity'  // NEU falls noch nicht da
   similarities: Record<string, number>  // NEU falls noch nicht da
   openNote: (noteId: string, line?: number) => void
+  showTags: boolean 
 }
 
 export default function ResultsListItem({
@@ -45,7 +83,7 @@ export default function ResultsListItem({
   const { itemData, listData: genericListData } = data
   
   const listData = genericListData as NoteSearchListData
-  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities } = itemData
+  const { openNote, titlesOnly, folders, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, showTags } = itemData
   const { isCollapsed, result } = listData.getItemAtIndex(index)
 
   if (isNoteItem(result)) {
@@ -66,6 +104,7 @@ export default function ResultsListItem({
   similarities={similarities}  // NEU falls noch nicht da
   style={style}
   openNote={openNote}
+  showTags={showTags}
 />
     )
   } else if (isFragmentItem(result)) {
@@ -91,6 +130,7 @@ function LocationRow({
   similarities,  // NEU falls noch nicht da
   style,
   openNote,
+  showTags, 
 }: {
   index: number
   isCollapsed: boolean
@@ -107,6 +147,7 @@ function LocationRow({
   similarities: Record<string, number>  // NEU falls noch nicht da
   style: CSSProperties
   openNote: (noteId: string, line?: number) => void
+  showTags: boolean
 }) {
   const { id, title, matchCount, note } = result
 
@@ -171,17 +212,26 @@ const noteHeaderContent = (
   </div>
 )}
     
-    {note.tags && note.tags.length > 0 && (
+    {/* Tag-Anzeige: nur wenn showTags aktiv ist */}
+    {showTags && note.tags && note.tags.length > 0 && (
       <div className="flex gap-1 ml-2">
-        {note.tags.map((tag) => (
-          <span 
-            key={tag.id}
-            className="px-2 py-0.5 text-xs rounded-full bg-fuchsia-100 dark:bg-fuchsia-900 dark:bg-opacity-30 text-fuchsia-700 dark:text-fuchsia-300 border border-fuchsia-300 dark:border-fuchsia-700"
-            title={tag.title}
-          >
-            {tag.title}
-          </span>
-        ))}
+        {note.tags.map((tag) => {
+          const { displayText, isBundesland } = formatTag(tag.title)
+          
+          return (
+            <span 
+              key={tag.id}
+              className={
+                isBundesland
+                  ? "px-2 py-0.5 bg-blue-100 dark:bg-blue-900 dark:bg-opacity-30 text-blue-700 dark:text-blue-300 text-xs rounded font-semibold"
+                  : "px-2 py-0.5 bg-fuchsia-100 dark:bg-fuchsia-900 dark:bg-opacity-30 text-fuchsia-700 dark:text-fuchsia-300 text-xs rounded"
+              }
+              title={tag.title}  // Vollständiger Tag-Name im Tooltip
+            >
+              {displayText}
+            </span>
+          )
+        })}
       </div>
     )}
     
