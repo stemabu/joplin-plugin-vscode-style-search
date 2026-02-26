@@ -610,6 +610,147 @@ getCurrentNoteFolderId: async (): Promise<string | null> => {
     }
   },
 
+// Neue Funktion: Titel-Änderungen analysieren (F2)
+renameTitles: async (noteIds: string[]): Promise<any[]> => {
+  console.log(`[TitleRename] Analyzing ${noteIds.length} notes for title changes`)
+  
+  const changes: any[] = []
+  
+  for (const noteId of noteIds) {
+    try {
+      const note = await joplin.data.get(['notes', noteId], { fields: ['id', 'title', 'body'] })
+      
+      // MusliStart-Zeile finden
+      const lines = note.body.split('\n')
+      const musliStartLine = lines.find(line => line.includes('MusliStart-'))
+      
+      if (!musliStartLine) {
+        console.log(`[TitleRename] Note ${noteId}: No MusliStart line found - skipping`)
+        changes.push({
+          noteId: note.id,
+          oldTitle: note.title,
+          newTitle: note.title,
+          error: 'Keine MusliStart-Zeile gefunden',
+          skip: true
+        })
+        continue
+      }
+      
+      // Datum extrahieren (direkt nach "MusliStart-")
+      const musliStartMatch = musliStartLine.match(/MusliStart-(\d{2})\.(\d{2})\.(\d{4})/)
+      if (!musliStartMatch) {
+        changes.push({
+          noteId: note.id,
+          oldTitle: note.title,
+          newTitle: note.title,
+          error: 'Datum-Format in MusliStart-Zeile ungültig',
+          skip: true
+        })
+        continue
+      }
+      
+      const [, day, month, year] = musliStartMatch
+      const formattedDate = `${year}-${month}-${day}`
+      
+      // Titel analysieren
+      const title = note.title
+      
+      // Zweites eckiges Klammernpaar finden: [Abk Nummer]
+      const bracketMatches = [...title.matchAll(/\[([^\]]+)\]/g)]
+      if (bracketMatches.length < 2) {
+        changes.push({
+          noteId: note.id,
+          oldTitle: note.title,
+          newTitle: note.title,
+          error: 'Weniger als 2 eckige Klammerpaare im Titel gefunden',
+          skip: true
+        })
+        continue
+      }
+      
+      // Zweites Klammernpaar analysieren
+      const secondBracket = bracketMatches[1][1] // Inhalt des zweiten Klammerpaars
+      const bracketParts = secondBracket.trim().split(/\s+/)
+      
+      if (bracketParts.length < 2) {
+        changes.push({
+          noteId: note.id,
+          oldTitle: note.title,
+          newTitle: note.title,
+          error: 'Zweites Klammernpaar hat nicht Format [Abk Nummer]',
+          skip: true
+        })
+        continue
+      }
+      
+      const abk = bracketParts[0]
+      const nummer = bracketParts.slice(1).join(' ')
+      
+      // Rest des Titels nach dem ersten Doppelpunkt
+      const colonIndex = title.indexOf(':')
+      let restTitle = ''
+      
+      if (colonIndex !== -1) {
+        restTitle = title.substring(colonIndex + 1).trim()
+      } else {
+        // Kein Doppelpunkt gefunden - nehme alles nach dem zweiten Klammernpaar
+        const secondBracketEnd = title.indexOf(bracketMatches[1][0]) + bracketMatches[1][0].length
+        restTitle = title.substring(secondBracketEnd).trim()
+      }
+      
+      // Neuen Titel erstellen
+      const newTitle = `${formattedDate} ${nummer} [${abk}] – ${restTitle}`
+      
+      changes.push({
+        noteId: note.id,
+        oldTitle: note.title,
+        newTitle: newTitle,
+        date: formattedDate,
+        nummer: nummer,
+        abk: abk,
+        skip: false
+      })
+      
+    } catch (error) {
+      console.error(`[TitleRename] Error analyzing note ${noteId}:`, error)
+      changes.push({
+        noteId: noteId,
+        oldTitle: '(Fehler beim Laden)',
+        newTitle: '',
+        error: error.message,
+        skip: true
+      })
+    }
+  }
+  
+  console.log(`[TitleRename] Found ${changes.filter(c => !c.skip).length} valid title changes`)
+  return changes
+},
+
+// Titel-Änderungen anwenden
+applyTitleChanges: async (changes: any[]): Promise<void> => {
+  console.log(`[TitleRename] Applying ${changes.length} title changes`)
+  
+  for (const change of changes) {
+    if (change.skip) {
+      console.log(`[TitleRename] Skipping note ${change.noteId}`)
+      continue
+    }
+    
+    try {
+      await joplin.data.put(['notes', change.noteId], null, {
+        title: change.newTitle
+      })
+      console.log(`[TitleRename] ✓ Renamed note ${change.noteId}`)
+    } catch (error) {
+      console.error(`[TitleRename] Error renaming note ${change.noteId}:`, error)
+      throw new Error(`Fehler beim Umbenennen von "${change.oldTitle}": ${error.message}`)
+    }
+  }
+  
+  console.log(`[TitleRename] All title changes applied successfully`)
+},	
+
   analyzeLocationData: async (noteIds: string[]): Promise<any[]> => {
   console.log(`[LocationProcessing] ============================================`)
   console.log(`[LocationProcessing] START: analyzeLocationData`)
