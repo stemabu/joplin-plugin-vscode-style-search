@@ -19,26 +19,24 @@ import { Folder } from 'src'
 const BUNDESLAND_ABBREVIATIONS: Record<string, string> = {
   'bayern': 'Bay',
   'niedersachsen': 'Nds',
-  'nordrhein-westfalen': 'Nrw',
-  'baden-württemberg': 'Bwü',
-  'baden-wuerttemberg': 'Bwü',
-  'rheinland-pfalz': 'Rlp',
+  'nordrheinwestfalen': 'Nrw',
+  'badenwuerttemberg': 'Bwü',
+  'rheinlandpfalz': 'Rlp',
   'hessen': 'Hes',
   'sachsen': 'Sac',
-  'thüringen': 'Thü',
   'thueringen': 'Thü',
-  'schleswig-holstein': 'Sho',
-  'mecklenburg-vorpommern': 'Mvp',
+  'schleswigholstein': 'Sho',
+  'mecklenburgvorpommern': 'Mvp',
   'brandenburg': 'Bra',
-  'sachsen-anhalt': 'Sah',
+  'sachsenanhalt': 'Sah',
   'berlin': 'Ber',
   'hamburg': 'Ham',
   'bremen': 'Bre',
   'saarland': 'Saa',
 }
 
-// Hilfsfunktion für Tag-Formatierung
 function formatTag(tagTitle: string): { displayText: string; isBundesland: boolean } {
+  // Bundesland-Tags: mit "bl:" Prefix
   if (tagTitle.startsWith('bl:')) {
     const bundeslandName = tagTitle.substring(3).toLowerCase().trim()
     const abbreviation = BUNDESLAND_ABBREVIATIONS[bundeslandName]
@@ -50,6 +48,13 @@ function formatTag(tagTitle: string): { displayText: string; isBundesland: boole
     return { displayText: bundeslandName.substring(0, 3).toUpperCase(), isBundesland: true }
   }
   
+  // NEU: Ort-Tags: "ort:" Prefix entfernen
+  if (tagTitle.startsWith('ort:')) {
+    const ortName = tagTitle.substring(4).trim()
+    return { displayText: ortName, isBundesland: false }
+  }
+  
+  // Alle anderen Tags: unverändert
   return { displayText: tagTitle, isBundesland: false }
 }
 
