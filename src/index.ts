@@ -1486,6 +1486,20 @@ joplin.plugins.register({
       },
     })
 
+    joplin.commands.register({
+      name: 'renameTitlesCommand',
+      label: 'Titel umbenennen (F2)',
+      iconName: 'fas fa-edit',
+      execute: async () => {
+        await joplin.views.panels.postMessage(panel, {
+          type: 'RENAME_TITLES_DIALOG',
+        })
+        if (!(await joplin.views.panels.visible(panel))) {
+          await joplin.views.panels.show(panel)
+        }
+      },
+    })
+	  
     joplin.views.menuItems.create(
       'isquaredsoftware.vscode-search.toggle_panel.menuitem',
       'isquaredsoftware.vscode-search.toggle_panel',
@@ -1519,6 +1533,13 @@ joplin.plugins.register({
       'openLocationProcessingDialog',
       MenuItemLocation.Tools,
       { accelerator: 'F12' },
+    )
+
+	joplin.views.menuItems.create(
+      'renameTitlesMenuItem',
+      'renameTitlesCommand',
+      MenuItemLocation.Tools,
+      { accelerator: 'F2' },
     )
 
     const target: PostMessageTarget = {
