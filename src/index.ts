@@ -1161,18 +1161,6 @@ applyTitleChanges: async (changes: any[]): Promise<void> => {
     console.log(`[LocationProcessing] ============================================`)
   },
   
-  closeDialog: async (): Promise<void> => {
-    // This will be overridden in onStart when panel is available
-    console.log('[LocationProcessing] closeDialog called but panel not available yet')
-  },
-  
-  refreshTagsCache: async (): Promise<void> => {
-    console.log('[LocationProcessing] Refreshing tags cache...')
-    // Tags are always fetched fresh via getAllTags() on each request, so no cache to clear.
-    // This method exists for API consistency and potential future caching implementation.
-  },
-}
-
 export type HandlerType = typeof handler
 
 export const createRpcServer = (target: PostMessageTarget) => {
