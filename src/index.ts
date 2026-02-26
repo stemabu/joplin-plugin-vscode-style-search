@@ -697,7 +697,10 @@ renameTitles: async (noteIds: string[]): Promise<any[]> => {
         const secondBracketEnd = title.indexOf(bracketMatches[1][0]) + bracketMatches[1][0].length
         restTitle = title.substring(secondBracketEnd).trim()
       }
-      
+		
+      // Entferne das zweite Klammernpaar aus dem restlichen Titel
+	  restTitle = restTitle.replace(bracketMatches[1][0], '').trim()
+		
       // Neuen Titel erstellen
       const newTitle = `${formattedDate} ${nummer} [${abk}] – ${restTitle}`
       
