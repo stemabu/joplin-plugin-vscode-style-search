@@ -1160,7 +1160,8 @@ applyTitleChanges: async (changes: any[]): Promise<void> => {
     console.log(`[LocationProcessing] FINISHED: All changes applied successfully`)
     console.log(`[LocationProcessing] ============================================`)
   },
-  
+}
+	
 export type HandlerType = typeof handler
 
 export const createRpcServer = (target: PostMessageTarget) => {
