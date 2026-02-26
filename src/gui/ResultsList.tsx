@@ -24,6 +24,7 @@ interface ResultsListProps {
   similarities: Record<string, number>
   status: 'initial' | 'loading' | 'resolved'
   openNote: (id: string, line?: number) => void
+  showTags: boolean
 }
 
 export default function ResultsList({
@@ -41,6 +42,7 @@ export default function ResultsList({
   mode,
   similarities,
   openNote,
+  showTags,
 }: ResultsListProps) {
   const isPending = status === STATUS_PENDING
 
@@ -59,8 +61,9 @@ export default function ResultsList({
     mode,
     similarities,
     openNote,
+    showTags,
   }
-}, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, openNote])
+}, [listData, query, results, folders, titlesOnly, moveMode, noteMovements, onNoteMovementChange, folder1Name, folder2Name, mode, similarities, openNote, showTags])
 
   if (status === STATUS_RESOLVED && results.length === 0) {
     return <div>No results found somehow!</div>
