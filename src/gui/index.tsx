@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import * as ReactDOM from 'react-dom/client'
+import { TitleRenameDialog } from './TitleRenameDialog'
 
 import { useAsync } from 'react-use'
 import classnames from 'classnames'
@@ -122,6 +123,9 @@ function App() {
   // NEU: Ordner-Limit-Modus
   const [limitToFolders, setLimitToFolders] = useState(false)
   const [additionalFolder, setAdditionalFolder] = useState<string>('')
+
+  const [showTitleRenameDialog, setShowTitleRenameDialog] = React.useState(false)
+  const [titleRenameChanges, setTitleRenameChanges] = React.useState<any[]>([])
   
   // Schwellwerte für jeden Algorithmus
   const [thresholds, setThresholds] = useState({
@@ -295,6 +299,11 @@ useEffect(() => {
             setShowLocationDialog(true)
             break
           }
+           case 'RENAME_TITLES_DIALOG': {
+           console.log('[TitleRename] Opening title rename dialog...')
+           handleRenameTitles()
+           break
+          }
         }
       } catch (error) {
         console.error('Error handling message:', error)
@@ -354,7 +363,41 @@ useEffect(() => {
       setNoteMovements(new Map())
     }
   }
+  
+  const handleRenameTitles = async () => {
+    try {
+      const noteIds = await client.stub.getSelectedNoteIds()
+      
+      if (noteIds.length === 0) {
+        alert('Bitte wählen Sie mindestens eine Notiz aus.')
+        return
+      }
+      
+      const changes = await client.stub.renameTitles(noteIds)
+      setTitleRenameChanges(changes)
+      setShowTitleRenameDialog(true)
+    } catch (error) {
+      console.error('Error analyzing title changes:', error)
+      alert('Fehler beim Analysieren der Titel: ' + error.message)
+    }
+  }
 
+  const applyTitleRenameChanges = async () => {
+    try {
+      await client.stub.applyTitleChanges(titleRenameChanges)
+      setShowTitleRenameDialog(false)
+      setTitleRenameChanges([])
+      alert('Titel wurden erfolgreich umbenannt!')
+    } catch (error) {
+      console.error('Error applying title changes:', error)
+      alert('Fehler beim Umbenennen: ' + error.message)
+    }
+  }
+
+  const cancelTitleRename = () => {
+    setShowTitleRenameDialog(false)
+    setTitleRenameChanges([])
+  }
   const handleNoteMovementChange = (noteId: string, target: 'none' | 'folder1' | 'folder2') => {
     setNoteMovements(prev => {
       const newMap = new Map(prev)
@@ -1028,6 +1071,13 @@ if (mode === 'search') {
             />
           </div>
         </div>
+      )}
+     {showTitleRenameDialog && (
+        <TitleRenameDialog
+          changes={titleRenameChanges}
+          onApply={applyTitleRenameChanges}
+          onCancel={cancelTitleRename}
+        />
       )}
     </div>
   )
