@@ -400,6 +400,8 @@ function normalizeForTag(text: string): string {
     .replace(/[^a-z0-9]/g, '')
 }
 
+let searchPanelRef: string | null = null
+
 const handler = {
   search: searchNotes,
   openNote: async (noteId: string, line?: number) => {
@@ -1160,6 +1162,14 @@ applyTitleChanges: async (changes: any[]): Promise<void> => {
     console.log(`[LocationProcessing] FINISHED: All changes applied successfully`)
     console.log(`[LocationProcessing] ============================================`)
   },
+
+  closeDialog: async (): Promise<void> => {
+    if (!searchPanelRef) {
+      throw new Error('Search panel not initialized')
+    }
+    console.log('[LocationProcessing] Closing dialog...')
+    await joplin.views.panels.hide(searchPanelRef)
+  },
 }
 	
 export type HandlerType = typeof handler
@@ -1403,14 +1413,9 @@ joplin.plugins.register({
     })
 
     const panel = await joplin.views.panels.create('panel_1')
+    searchPanelRef = panel
     await joplin.views.panels.hide(panel)
     setUpSearchPanel(panel)
-
-    // Override closeDialog with panel reference
-    handler.closeDialog = async (): Promise<void> => {
-      console.log('[LocationProcessing] Closing dialog...')
-      await joplin.views.panels.hide(panel)
-    }
 
     // Search Panel Commands
     joplin.commands.register({
