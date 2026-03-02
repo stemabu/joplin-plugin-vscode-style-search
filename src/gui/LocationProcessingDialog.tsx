@@ -237,9 +237,9 @@ export default function LocationProcessingDialog({ client, onClose }: LocationPr
       console.log(`[LocationDialog] Refreshing tags cache...`)
       await client.stub.refreshTagsCache()
       
-      // Dialog schließen nach erfolgreicher Ausführung
+      // Dialog clientseitig schließen (kein RPC nötig!)
       console.log(`[LocationDialog] Closing dialog...`)
-      await client.stub.closeDialog()
+      onClose()
       
     } catch (error) {
       console.error('[LocationDialog] ============================================')

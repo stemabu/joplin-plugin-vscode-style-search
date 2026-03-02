@@ -42,7 +42,6 @@ export interface RpcMethods {
   analyzeLocationData(noteIds: string[]): Promise<LocationChange[]>
   applyLocationChanges(changes: LocationChange[]): Promise<void>
   getSelectedNoteIds(): Promise<string[]>
-  closeDialog(): Promise<void>  // NEU
   refreshTagsCache(): Promise<void>  // NEU
   renameTitles(noteIds: string[]): Promise<any[]>
   applyTitleChanges(changes: any[]): Promise<void>

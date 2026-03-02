@@ -1163,13 +1163,6 @@ applyTitleChanges: async (changes: any[]): Promise<void> => {
     console.log(`[LocationProcessing] ============================================`)
   },
 
-  closeDialog: async (): Promise<void> => {
-    if (!searchPanelRef) {
-      throw new Error('Search panel not initialized')
-    }
-    console.log('[LocationProcessing] Closing dialog...')
-    await joplin.views.panels.hide(searchPanelRef)
-  },
 }
 	
 export type HandlerType = typeof handler
