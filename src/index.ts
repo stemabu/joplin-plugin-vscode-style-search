@@ -1163,6 +1163,19 @@ applyTitleChanges: async (changes: any[]): Promise<void> => {
     console.log(`[LocationProcessing] ============================================`)
   },
 
+  refreshTagsCache: async (): Promise<void> => {
+    // Tags-Cache wird implizit durch getAllTags aktualisiert.
+    // Diese Methode existiert damit der RPC-Aufruf nicht fehlschlägt.
+    console.log('[TagsCache] refreshTagsCache called – no-op (tags loaded on demand)')
+  },
+
+  closeDialog: async (): Promise<void> => {
+    // Der LocationProcessingDialog ist ein React-Overlay im Panel,
+    // kein eigenständiges Fenster. Er wird clientseitig über onClose() geschlossen.
+    // Diese Methode existiert als no-op damit der RPC-Aufruf nicht fehlschlägt.
+    console.log('[Dialog] closeDialog called – no-op (dialog closed client-side)')
+  },
+
 }
 	
 export type HandlerType = typeof handler
